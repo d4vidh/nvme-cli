@@ -21,6 +21,7 @@
 
 enum {
     FADU_LOG_SMART_CLOUD_ATTRIBUTES = 0xC0,
+    FADU_LOG_FW_ACTIVATE_HISTORY    = 0xC2,
 };
 
 struct fadu_bad_nand_block_count {
@@ -70,6 +71,32 @@ struct fadu_cloud_attrs_log {
     __u8  plp_start_count[16];
     __u8  endurance_estimate[16];
     __u8  rsvd192[302];
+    __u16 log_page_version;
+    __u8  log_page_guid[16];
+};
+
+struct __attribute__((packed)) fadu_fw_act_history_entry {
+    __u8  version;
+    __u8  length;
+    __u8  rsvd2[2];
+    __u16 counter;
+    __u64 timestamp;
+    __u8  rsvd14[8];
+    __u64 power_cycle;
+    __u8  prev_fw[8];
+    __u8  new_fw[8];
+    __u8  slot;
+    __u8  ca_type;
+    __u16 result;
+    __u8  rsvd50[14];
+};
+
+struct __attribute__((packed)) fadu_fw_act_history {
+    __u8 log_id;
+    __u8 rsvd1[3];
+    __u32 num_entries;
+    struct fadu_fw_act_history_entry entries[20];
+    __u8 rsvd1288[2790];
     __u16 log_page_version;
     __u8  log_page_guid[16];
 };
@@ -282,6 +309,127 @@ void fadu_print_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_
     printf("\n\n");
 }
 
+static const char *commit_action_type_to_string(__u8 ca_type) {
+    const char *ca_values[8] = { "000b", "001b", "010b", "011b", "100b", "101b", "110b", "111b" };
+
+    return ca_values[ca_type & 7];
+}
+
+void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) {
+	struct json_object *root;
+    struct json_object *entry;
+    struct json_array *entries;
+    __u32 num_entries = le32_to_cpu(fw_act_history->num_entries);
+    struct fadu_fw_act_history_entry *fw_act_history_entry;
+    char timestamp_buf[20];
+	char prev_fw_buf[9];
+	char new_fw_buf[9];
+	char ca_type_buf[8];
+    char result_buf[12];    
+    uint64_t timestamp, hour;
+    uint8_t  min, sec;
+    int i;
+
+    root = json_create_object();
+    entries = json_create_array();
+
+    for (i = 0; i < num_entries; i++) {
+        fw_act_history_entry = &fw_act_history->entries[i];
+
+        memset((void *) timestamp_buf, 0, 20);
+        memset((void *) prev_fw_buf, 0, 9);
+        memset((void *) new_fw_buf, 0, 9);
+        memset((void *) ca_type_buf, 0, 8);
+        memset((void *) result_buf, 0, 12);
+
+        timestamp = le64_to_cpu(fw_act_history_entry->timestamp) / 1000;
+        hour = timestamp / 3600;
+        min = (timestamp % 3600) / 60;
+        sec = timestamp % 60;
+        sprintf(timestamp_buf, "%"PRIu64":%02"PRIu8":%02"PRIu8"", hour, min, sec);
+
+        memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
+        memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
+
+        if (fw_act_history_entry->result == 0)
+            sprintf(result_buf, "pass");
+        else
+            sprintf(result_buf, "fail #%"PRIu16"", le16_to_cpu(fw_act_history_entry->result));
+
+        entry = json_create_object();
+
+        json_object_add_value_uint(entry, "firwmare_action_counter", 
+            le16_to_cpu(fw_act_history_entry->counter));
+        json_object_add_value_string(entry, "power_on_hour", timestamp_buf);
+        json_object_add_value_uint(entry, "power_cycle_count", 
+            le64_to_cpu(fw_act_history_entry->power_cycle));
+        json_object_add_value_string(entry, "previous_firmware", prev_fw_buf);
+        json_object_add_value_string(entry, "new_firmware_activated", new_fw_buf);
+        json_object_add_value_uint(entry, "slot_number", fw_act_history_entry->power_cycle);
+        json_object_add_value_string(entry, "commit_action_type", ca_type_buf);
+        json_object_add_value_string(entry, "result", result_buf);
+
+        json_array_add_value_object(entries, entry);
+    }
+
+	json_object_add_value_array(root, "entries", entries);
+
+    json_print_object(root, NULL);
+    printf("\n");
+    json_free_object(root);
+}
+
+void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history) {
+    __u32 num_entries = le32_to_cpu(fw_act_history->num_entries);
+    struct fadu_fw_act_history_entry *fw_act_history_entry;
+    char timestamp_buf[20];
+	char prev_fw_buf[9];
+	char new_fw_buf[9];
+	char ca_type_buf[8];    
+    uint64_t timestamp, hour;
+    uint8_t  min, sec;
+    int i;
+
+    printf("Firmware Activate History Log for NVME device:%s\n", devicename);
+
+    printf("Firmware    Power           Power             Previous  New        Slot    Commit  Result     \n");
+    printf("Activation  on Hour         Cycle             Firmware  Firmware   Number  Action             \n");
+    printf("Counter                     Count                       Activated          Type               \n");
+    printf("----------  --------------  ----------------  --------  ---------  ------  ------  -----------\n");
+
+    for (i = 0; i < num_entries; i++) {
+        fw_act_history_entry = &fw_act_history->entries[i];
+
+        memset((void *)timestamp_buf, 0, 20);
+        memset((void *)prev_fw_buf, 0, 9);
+        memset((void *)new_fw_buf, 0, 9);
+        memset((void *)ca_type_buf, 0, 8);
+
+        timestamp = le64_to_cpu(fw_act_history_entry->timestamp) / 1000;
+        hour = timestamp / 3600;
+        min = (timestamp % 3600) / 60;
+        sec = timestamp % 60;
+        sprintf(timestamp_buf, "%"PRIu64":%02"PRIu8":%02"PRIu8"", hour, min, sec);
+
+        memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
+        memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
+
+        printf("%-10"PRIu16"  ", le16_to_cpu(fw_act_history_entry->counter));
+        printf("%-14s  ", timestamp_buf);
+        printf("%-16"PRIu64"  ", le64_to_cpu(fw_act_history_entry->power_cycle));
+        printf("%-8s  ", prev_fw_buf);
+        printf("%-9s  ", new_fw_buf);
+        printf("%-6"PRIu8"  ", fw_act_history_entry->slot);
+        printf("%-6s  ", commit_action_type_to_string(fw_act_history_entry->ca_type));
+
+        if (fw_act_history_entry->result == 0)
+            printf("pass\n");
+        else
+            printf("fail #%"PRIu16"\n", le16_to_cpu(fw_act_history_entry->result));
+    }
+    printf("\n\n");
+}
+
 void fadu_print_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
@@ -290,6 +438,16 @@ void fadu_print_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, en
     }
 
     fadu_print_cloud_attrs_log_normal(cloud_attrs_log);
+}
+
+void fadu_print_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
+{
+    if (flags & JSON) {
+        fadu_print_fw_act_history_json(fw_act_history);
+        return;
+    }
+
+    fadu_print_fw_act_history_normal(fw_act_history);
 }
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -336,7 +494,49 @@ ret:
 }
 
 static int fadu_vs_internal_log(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
-static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+
+static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { 
+    struct fadu_fw_act_history fw_act_history;
+	const char *desc ="Retrieve FW activate history table for the given device.";
+	enum nvme_print_flags flags;
+	int err, fd;
+
+	struct config {
+		char *output_format;
+	};
+
+	struct config cfg = {
+		.output_format = "normal",
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FMT("output-format",   'o', &cfg.output_format,  output_format_no_binary),
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	err = flags = validate_output_format(cfg.output_format);
+	if (flags < 0)
+		goto close_fd;
+
+	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_FW_ACTIVATE_HISTORY,
+        false, sizeof(fw_act_history), &fw_act_history);
+	if (!err)
+		fadu_print_fw_act_history(&fw_act_history, flags);
+	else if (err > 0)
+		nvme_show_status(err);
+	else
+		perror("vs-fw-activate-history");
+
+close_fd:
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
+
 static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 static int fadu_clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 static int fadu_clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
