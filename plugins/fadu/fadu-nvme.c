@@ -29,6 +29,11 @@ enum {
 };
 
 enum {
+    FADU_FEAT_CLEAR_FW_UPDATE_HISTORY = 0xC1,
+    FADU_FEAT_CLEAR_PCIE_CORR_ERRORS  = 0xC3,
+};
+
+enum {
     FADU_VUC_SUBOPCODE_VS_DRIVE_INFO      = 0x00080101,
 };
 
@@ -650,8 +655,56 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-static int fadu_clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
-static int fadu_clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+static int fadu_clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+	const char *desc ="Clear PCIe correctable errors for the given device.";
+	int err, fd;
+	__u32 value = 1 << 31; /* Bit 31 - clear PCIe correctable count */
+
+	OPT_ARGS(opts) = {
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+    err = nvme_set_feature(fd, 0, FADU_FEAT_CLEAR_PCIE_CORR_ERRORS, value,
+	    0, 0, 0, NULL, NULL);
+	if (err < 0)
+		perror("clear-pcie-correctable-errors");
+	else
+		nvme_show_status(err);
+
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
+
+static int fadu_clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+	const char *desc ="Clear FW activation history for the given device.";
+	int err, fd;
+	__u32 value = 1 << 31; /* Bit 31 - Clear Firmware Update History Log */
+
+	OPT_ARGS(opts) = {
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+    err = nvme_set_feature(fd, 0, FADU_FEAT_CLEAR_FW_UPDATE_HISTORY, value,
+	    0, 0, 0, NULL, NULL);
+	if (err < 0)
+		perror("clear-fw-activate-history");
+	else
+		nvme_show_status(err);
+
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
+
 static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 
 static int fadu_cloud_ssd_plugin_version(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
