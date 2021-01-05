@@ -25,6 +25,7 @@ enum {
 
 enum {
     FADU_LOG_SMART_CLOUD_ATTRIBUTES = 0xC0,
+    FADU_LOG_ERROR_RECOVERY         = 0xC1,
     FADU_LOG_FW_ACTIVATE_HISTORY    = 0xC2,
 };
 
@@ -34,7 +35,8 @@ enum {
 };
 
 enum {
-    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO      = 0x00080101,
+    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO = 0x00080101,
+    FADU_VUC_SUBOPCODE_LOG_PAGE_DIR  = 0x00080901,
 };
 
 struct fadu_bad_nand_block_count {
@@ -117,6 +119,13 @@ struct __attribute__((packed)) fadu_fw_act_history {
 struct fadu_drive_info {
     __u32 drive_hw_revision;
     __u32 ftl_unit_size;
+};
+
+struct fadu_log_page_directory {
+    __u32 num_logs;
+    __u8  rsvd4[12];
+    __u8  log_ids[256];
+    __u8  rsvd272[240];
 };
 
 static const int plugin_version_major = 1;
@@ -358,7 +367,7 @@ void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
 	struct json_object *root;
     struct json_object *entry;
     struct json_array *entries;
-    __u32 num_entries = le32_to_cpu(fw_act_history->num_entries);
+    __u32 num_entries;
     struct fadu_fw_act_history_entry *fw_act_history_entry;
     char timestamp_buf[20];
 	char prev_fw_buf[9];
@@ -371,6 +380,7 @@ void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
 
     root = json_create_object();
     entries = json_create_array();
+    num_entries = le32_to_cpu(fw_act_history->num_entries);
 
     for (i = 0; i < num_entries; i++) {
         fw_act_history_entry = &fw_act_history->entries[i];
@@ -419,7 +429,7 @@ void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
 }
 
 void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history) {
-    __u32 num_entries = le32_to_cpu(fw_act_history->num_entries);
+    __u32 num_entries;
     struct fadu_fw_act_history_entry *fw_act_history_entry;
     char timestamp_buf[20];
 	char prev_fw_buf[9];
@@ -435,6 +445,8 @@ void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
     printf("Activation  on Hour         Cycle             Firmware  Firmware   Number  Action             \n");
     printf("Counter                     Count                       Activated          Type               \n");
     printf("----------  --------------  ----------------  --------  ---------  ------  ------  -----------\n");
+
+    num_entries = le32_to_cpu(fw_act_history->num_entries);
 
     for (i = 0; i < num_entries; i++) {
         fw_act_history_entry = &fw_act_history->entries[i];
@@ -520,6 +532,103 @@ void fadu_print_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_f
     }
 
     fadu_print_drive_info_normal(drive_info);
+}
+
+static const char *log_id_to_string(__u8 log_id)
+{
+	switch (log_id) {
+		case NVME_LOG_ERROR:
+            return "Error Information Log ID";
+		case NVME_LOG_SMART:
+            return "Smart/Health Information Log ID";
+		case NVME_LOG_FW_SLOT:
+            return "Firmware Slot Information Log ID";
+		case NVME_LOG_CHANGED_NS:
+            return "Changed Namespace List Log ID";
+		case NVME_LOG_CMD_EFFECTS:
+            return "Commamds Supported and Effects Log ID";
+		case NVME_LOG_DEVICE_SELF_TEST:
+            return "Device Self-test Log ID";
+		case NVME_LOG_TELEMETRY_HOST:
+            return "Telemetry Host-initiated Log ID";
+		case NVME_LOG_TELEMETRY_CTRL:
+            return "Telemetry Controller-initiated Log ID";
+		case NVME_LOG_ENDURANCE_GROUP:
+            return "Endurance Group Information Log ID";
+		case NVME_LOG_ANA:
+            return "Asymmetric Namespace Access Log ID";
+		case NVME_LOG_RESERVATION:
+            return "Reservation Notification Log ID";
+		case NVME_LOG_SANITIZE:
+            return "Sanitize Status Log ID";
+
+		case FADU_LOG_SMART_CLOUD_ATTRIBUTES:
+            return "FADU OCP SMART Cloud Attributes Log ID";
+		case FADU_LOG_ERROR_RECOVERY:
+            return "FADU OCP Log Error Recovery Log ID";
+		case FADU_LOG_FW_ACTIVATE_HISTORY:
+            return "FADU OCP FW Activation History Log ID";
+
+		default:
+            return "FADU Vendor Unique Log ID";
+	}
+}
+
+void fadu_print_log_page_directory_json(struct fadu_log_page_directory *log_page_directory) {
+	struct json_object *root;
+    struct json_object *entry;
+    struct json_array *entries;
+    __u32 num_logs;
+    __u8  log_id;
+    int i;
+
+    root = json_create_object();
+    entries = json_create_array();
+    num_logs = le32_to_cpu(log_page_directory->num_logs);
+
+    for (i = 0; i < num_logs; i++) {
+        log_id = log_page_directory->log_ids[i];
+        printf("0x%02X: %s\n", log_id, log_id_to_string(log_id));
+    }
+    entries = json_create_array();
+
+    for (i = 0; i < num_logs; i++) {
+        entry = json_create_object();
+        log_id = log_page_directory->log_ids[i];
+
+        json_object_add_value_uint(entry, "log_id", log_id);
+        json_object_add_value_string(entry, "description", log_id_to_string(log_id));
+
+        json_array_add_value_object(entries, entry);
+    }
+
+	json_object_add_value_array(root, "directory", entries);
+
+    json_print_object(root, NULL);
+    printf("\n");
+    json_free_object(root);
+}
+
+void fadu_print_log_page_directory_normal(struct fadu_log_page_directory *log_page_directory) {
+    __u32 num_logs;
+    __u8  log_id;
+    int i;
+
+    num_logs = le32_to_cpu(log_page_directory->num_logs);
+    for (i = 0; i < num_logs; i++) {
+        log_id = log_page_directory->log_ids[i];
+        printf("0x%02X: %s\n", log_id, log_id_to_string(log_id));
+    }
+}
+
+void fadu_print_log_page_directory(struct fadu_log_page_directory *log_page_directory, enum nvme_print_flags flags)
+{
+    if (flags & JSON) {
+        fadu_print_log_page_directory_json(log_page_directory);
+        return;
+    }
+
+    fadu_print_log_page_directory_normal(log_page_directory);
 }
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -611,7 +720,7 @@ ret:
 
 static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
     struct fadu_drive_info drive_info;
-	const char *desc ="Retrieve Drive Info for the given device.";
+	const char *desc ="Retrieve drive information for the given device.";
 	enum nvme_print_flags flags;
 	int err, fd;
     __u32 data_len;
@@ -638,7 +747,6 @@ static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct
 		goto close_fd;
 
     data_len = sizeof(drive_info);
-
     err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
         0, FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
         data_len, &drive_info, 0, NULL, 0, NULL);
@@ -705,7 +813,50 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+    struct fadu_log_page_directory log_page_directory;
+	const char *desc ="Retrieve log page directory for the given device.";
+	enum nvme_print_flags flags;
+	int err, fd;
+    __u32 data_len;
+
+	struct config {
+		char *output_format;
+	};
+
+	struct config cfg = {
+		.output_format = "normal",
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	err = flags = validate_output_format(cfg.output_format);
+	if (flags < 0)
+		goto close_fd;
+
+    data_len = sizeof(log_page_directory);
+    err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
+        0, FADU_VUC_SUBOPCODE_LOG_PAGE_DIR, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
+        data_len, &log_page_directory, 0, NULL, 0, NULL);
+	if (!err)
+		fadu_print_log_page_directory(&log_page_directory, flags);
+	else if (err > 0)
+		nvme_show_status(err);
+	else
+		perror("log-page-directory");
+
+close_fd:
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
 
 static int fadu_cloud_ssd_plugin_version(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
     printf("cloud ssd plugin version: %d.%d\n", plugin_version_major, plugin_version_minor);
