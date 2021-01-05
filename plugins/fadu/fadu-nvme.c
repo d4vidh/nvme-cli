@@ -20,8 +20,16 @@
 #include "fadu-nvme.h"
 
 enum {
+    FADU_NVME_ADMIN_VUC_OPCODE = 0xC4,
+};
+
+enum {
     FADU_LOG_SMART_CLOUD_ATTRIBUTES = 0xC0,
     FADU_LOG_FW_ACTIVATE_HISTORY    = 0xC2,
+};
+
+enum {
+    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO      = 0x00080101,
 };
 
 struct fadu_bad_nand_block_count {
@@ -101,6 +109,11 @@ struct __attribute__((packed)) fadu_fw_act_history {
     __u8  log_page_guid[16];
 };
 
+struct fadu_drive_info {
+    __u32 drive_hw_revision;
+    __u32 ftl_unit_size;
+};
+
 static const int plugin_version_major = 1;
 static const int plugin_version_minor = 0;
 
@@ -115,7 +128,18 @@ static long double int128_to_double(__u8 *data)
         result *= 256;
         result += data[15 - i];
     }
+
     return result;
+}
+
+static unsigned int get_num_dwords(unsigned int byte_len) {
+    unsigned int num_dwords;
+
+    num_dwords = byte_len / 4;
+    if (byte_len % 4 != 0)
+        num_dwords += 1;
+    
+    return num_dwords;
 }
 
 static char *current_thermal_status_to_string(__u8 status) {
@@ -309,6 +333,16 @@ void fadu_print_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_
     printf("\n\n");
 }
 
+void fadu_print_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
+{
+    if (flags & JSON) {
+        fadu_print_cloud_attrs_log_json(cloud_attrs_log);
+        return;
+    }
+
+    fadu_print_cloud_attrs_log_normal(cloud_attrs_log);
+}
+
 static const char *commit_action_type_to_string(__u8 ca_type) {
     const char *ca_values[8] = { "000b", "001b", "010b", "011b", "100b", "101b", "110b", "111b" };
 
@@ -430,16 +464,6 @@ void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
     printf("\n\n");
 }
 
-void fadu_print_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
-{
-    if (flags & JSON) {
-        fadu_print_cloud_attrs_log_json(cloud_attrs_log);
-        return;
-    }
-
-    fadu_print_cloud_attrs_log_normal(cloud_attrs_log);
-}
-
 void fadu_print_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
@@ -448,6 +472,49 @@ void fadu_print_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum 
     }
 
     fadu_print_fw_act_history_normal(fw_act_history);
+}
+
+void fadu_print_drive_info_json(struct fadu_drive_info *drive_info) {
+    struct json_object *root;
+    char hw_rev_buf[20];
+    __u16 hw_rev_major, hw_rev_minor;
+
+    root = json_create_object();
+
+    memset((void *) hw_rev_buf, 0, 20);
+
+    hw_rev_major = le32_to_cpu(drive_info->drive_hw_revision) / 10;
+    hw_rev_minor = le32_to_cpu(drive_info->drive_hw_revision) % 10;
+
+    sprintf(hw_rev_buf, "%"PRIu32".%"PRIu32, hw_rev_major, hw_rev_minor);
+
+    json_object_add_value_string(root, "drive_hw_revision", hw_rev_buf);
+    json_object_add_value_uint(root, "ftl_unit_size", le32_to_cpu(drive_info->ftl_unit_size));
+    
+    json_print_object(root, NULL);
+    printf("\n");
+    json_free_object(root);
+}
+
+void fadu_print_drive_info_normal(struct fadu_drive_info *drive_info) {
+    __u16 hw_rev_major, hw_rev_minor;
+
+    hw_rev_major = le32_to_cpu(drive_info->drive_hw_revision) / 10;
+    hw_rev_minor = le32_to_cpu(drive_info->drive_hw_revision) % 10;
+
+    printf("Drive HW Revision : %"PRIu32".%"PRIu32"\n", hw_rev_major, hw_rev_minor);
+    printf("FTL Unit Size     : %"PRIu32"\n", le32_to_cpu(drive_info->ftl_unit_size));
+    printf("\n\n");
+}
+
+void fadu_print_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_flags flags)
+{
+    if (flags & JSON) {
+        fadu_print_drive_info_json(drive_info);
+        return;
+    }
+
+    fadu_print_drive_info_normal(drive_info);
 }
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -466,7 +533,7 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format",   'o', &cfg.output_format,  output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
 		OPT_END()
 	};
 
@@ -510,7 +577,7 @@ static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cm
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format",   'o', &cfg.output_format,  output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
 		OPT_END()
 	};
 
@@ -537,7 +604,52 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+    struct fadu_drive_info drive_info;
+	const char *desc ="Retrieve Drive Info for the given device.";
+	enum nvme_print_flags flags;
+	int err, fd;
+    __u32 data_len;
+
+	struct config {
+		char *output_format;
+	};
+
+	struct config cfg = {
+		.output_format = "normal",
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	err = flags = validate_output_format(cfg.output_format);
+	if (flags < 0)
+		goto close_fd;
+
+    data_len = sizeof(drive_info);
+
+    err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
+        0, FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
+        data_len, &drive_info, 0, NULL, 0, NULL);
+	if (!err)
+		fadu_print_drive_info(&drive_info, flags);
+	else if (err > 0)
+		nvme_show_status(err);
+	else
+		perror("vs-drive-info");
+
+close_fd:
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
+
 static int fadu_clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 static int fadu_clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
