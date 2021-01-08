@@ -16,7 +16,7 @@ PLUGIN(NAME("fadu", "Fadu vendor specific extensions"),
         ENTRY("clear-fw-activate-history", "Clear FW Update History", fadu_clear_fw_activate_history)
         ENTRY("log-page-directory", "Retrieve Log Page Directory", fadu_log_page_directory)
         ENTRY("cloud-ssd-plugin-version", "Show Cloud SSD Plugin Version", fadu_cloud_ssd_plugin_version)
-        ENTRY("vs-telemetry-controller-option", "Retrieve FW Internal Log", fadu_telemetry_controller_option)
+        ENTRY("vs-telemetry-controller-option", "Retrieve FW Internal Log", fadu_vs_telemetry_controller_option)
     )
 );
 

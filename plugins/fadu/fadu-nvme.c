@@ -35,8 +35,16 @@ enum {
 };
 
 enum {
-    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO = 0x00080101,
-    FADU_VUC_SUBOPCODE_LOG_PAGE_DIR  = 0x00080901,
+    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO      = 0x00080101,
+    FADU_VUC_SUBOPCODE_LOG_PAGE_DIR       = 0x00080901,
+    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE = 0x000C0101,
+    FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE = 0x000C0000,
+};
+
+enum fadu_ctrl_option_flags {
+    FADU_CTRL_OPTION_ENABLE = 0,
+    FADU_CTRL_OPTION_DISABLE = 1,
+    FADU_CTRL_OPTION_STATUS = 2,
 };
 
 struct fadu_bad_nand_block_count {
@@ -133,6 +141,19 @@ static const int plugin_version_minor = 0;
 
 static const char *output_format_no_binary = "Output format: normal|json";
 
+enum fadu_ctrl_option_flags validate_fadu_ctrl_option(char *format)
+{
+	if (!format)
+		return -EINVAL;
+	if (!strcmp(format, "enable"))
+		return FADU_CTRL_OPTION_ENABLE;
+	if (!strcmp(format, "disable"))
+		return FADU_CTRL_OPTION_DISABLE;
+	if (!strcmp(format, "status"))
+		return FADU_CTRL_OPTION_STATUS;
+	return -EINVAL;
+}
+
 static long double int128_to_double(__u8 *data)
 {
     long double result = 0;
@@ -171,7 +192,7 @@ static char *current_thermal_status_to_string(__u8 status) {
     }
 }
 
-void fadu_print_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_log)
+void print_fadu_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_log)
 {
 	struct json_object *root;
     struct json_object *bad_user_nand_blocks;
@@ -275,7 +296,7 @@ void fadu_print_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_lo
     json_free_object(root);
 }
 
-void fadu_print_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_log)
+void print_fadu_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_log)
 {
     char log_page_guid_buf[2 * sizeof(cloud_attrs_log->log_page_guid) + 3];
     char *log_page_guid = log_page_guid_buf;
@@ -347,14 +368,14 @@ void fadu_print_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_
     printf("\n\n");
 }
 
-void fadu_print_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
+void print_fadu_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
-        fadu_print_cloud_attrs_log_json(cloud_attrs_log);
+        print_fadu_cloud_attrs_log_json(cloud_attrs_log);
         return;
     }
 
-    fadu_print_cloud_attrs_log_normal(cloud_attrs_log);
+    print_fadu_cloud_attrs_log_normal(cloud_attrs_log);
 }
 
 static const char *commit_action_type_to_string(__u8 ca_type) {
@@ -363,7 +384,7 @@ static const char *commit_action_type_to_string(__u8 ca_type) {
     return ca_values[ca_type & 7];
 }
 
-void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) {
+void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) {
 	struct json_object *root;
     struct json_object *entry;
     struct json_array *entries;
@@ -428,7 +449,7 @@ void fadu_print_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
     json_free_object(root);
 }
 
-void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history) {
+void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history) {
     __u32 num_entries;
     struct fadu_fw_act_history_entry *fw_act_history_entry;
     char timestamp_buf[20];
@@ -481,17 +502,17 @@ void fadu_print_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
     printf("\n\n");
 }
 
-void fadu_print_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
+void print_fadu_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
-        fadu_print_fw_act_history_json(fw_act_history);
+        print_fadu_fw_act_history_json(fw_act_history);
         return;
     }
 
-    fadu_print_fw_act_history_normal(fw_act_history);
+    print_fadu_fw_act_history_normal(fw_act_history);
 }
 
-void fadu_print_drive_info_json(struct fadu_drive_info *drive_info) {
+void print_fadu_drive_info_json(struct fadu_drive_info *drive_info) {
     struct json_object *root;
     char hw_rev_buf[20];
     __u16 hw_rev_major, hw_rev_minor;
@@ -513,7 +534,7 @@ void fadu_print_drive_info_json(struct fadu_drive_info *drive_info) {
     json_free_object(root);
 }
 
-void fadu_print_drive_info_normal(struct fadu_drive_info *drive_info) {
+void print_fadu_drive_info_normal(struct fadu_drive_info *drive_info) {
     __u16 hw_rev_major, hw_rev_minor;
 
     hw_rev_major = le32_to_cpu(drive_info->drive_hw_revision) / 10;
@@ -524,14 +545,14 @@ void fadu_print_drive_info_normal(struct fadu_drive_info *drive_info) {
     printf("\n\n");
 }
 
-void fadu_print_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_flags flags)
+void print_fadu_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
-        fadu_print_drive_info_json(drive_info);
+        print_fadu_drive_info_json(drive_info);
         return;
     }
 
-    fadu_print_drive_info_normal(drive_info);
+    print_fadu_drive_info_normal(drive_info);
 }
 
 static const char *log_id_to_string(__u8 log_id)
@@ -574,7 +595,7 @@ static const char *log_id_to_string(__u8 log_id)
 	}
 }
 
-void fadu_print_log_page_directory_json(struct fadu_log_page_directory *log_page_directory) {
+void print_fadu_log_page_directory_json(struct fadu_log_page_directory *log_page_directory) {
 	struct json_object *root;
     struct json_object *entry;
     struct json_array *entries;
@@ -609,7 +630,7 @@ void fadu_print_log_page_directory_json(struct fadu_log_page_directory *log_page
     json_free_object(root);
 }
 
-void fadu_print_log_page_directory_normal(struct fadu_log_page_directory *log_page_directory) {
+void print_fadu_log_page_directory_normal(struct fadu_log_page_directory *log_page_directory) {
     __u32 num_logs;
     __u8  log_id;
     int i;
@@ -621,14 +642,14 @@ void fadu_print_log_page_directory_normal(struct fadu_log_page_directory *log_pa
     }
 }
 
-void fadu_print_log_page_directory(struct fadu_log_page_directory *log_page_directory, enum nvme_print_flags flags)
+void print_fadu_log_page_directory(struct fadu_log_page_directory *log_page_directory, enum nvme_print_flags flags)
 {
     if (flags & JSON) {
-        fadu_print_log_page_directory_json(log_page_directory);
+        print_fadu_log_page_directory_json(log_page_directory);
         return;
     }
 
-    fadu_print_log_page_directory_normal(log_page_directory);
+    print_fadu_log_page_directory_normal(log_page_directory);
 }
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -662,7 +683,7 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_SMART_CLOUD_ATTRIBUTES,
         false, sizeof(cloud_attrs_log), &cloud_attrs_log);
 	if (!err)
-		fadu_print_cloud_attrs_log(&cloud_attrs_log, flags);
+		print_fadu_cloud_attrs_log(&cloud_attrs_log, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -706,7 +727,7 @@ static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cm
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_FW_ACTIVATE_HISTORY,
         false, sizeof(fw_act_history), &fw_act_history);
 	if (!err)
-		fadu_print_fw_act_history(&fw_act_history, flags);
+		print_fadu_fw_act_history(&fw_act_history, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -751,7 +772,7 @@ static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct
         0, FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
         data_len, &drive_info, 0, NULL, 0, NULL);
 	if (!err)
-		fadu_print_drive_info(&drive_info, flags);
+		print_fadu_drive_info(&drive_info, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -846,7 +867,7 @@ static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, s
         0, FADU_VUC_SUBOPCODE_LOG_PAGE_DIR, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
         data_len, &log_page_directory, 0, NULL, 0, NULL);
 	if (!err)
-		fadu_print_log_page_directory(&log_page_directory, flags);
+		print_fadu_log_page_directory(&log_page_directory, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -863,4 +884,67 @@ static int fadu_cloud_ssd_plugin_version(int argc, char **argv, struct command *
     return 0;
 }
 
-static int fadu_telemetry_controller_option(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+static int fadu_vs_telemetry_controller_option(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+	const char *desc = "Control controller-initiated telemetry log page for the given device.";
+    const char *option = "Option: enable|disable|status";
+	int flags;
+	int err, fd;
+    __u32 data_buf;
+    __u32 subopcode;
+    __u32 mode = 0;
+    __u32 data_len = 0;
+    __u32 *data = NULL;
+    __u32 timeout_ms = 0;
+
+	struct config {
+		char *option;
+	};
+
+	struct config cfg = {
+		.option = "status",
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FMT("option", 'o', &cfg.option, option),
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	err = flags = validate_fadu_ctrl_option(cfg.option);
+	if (flags == -EINVAL) {
+        fprintf(stderr, "ERROR: invalid option: %s\n", cfg.option);
+        goto close_fd;
+    }
+
+    if (flags == FADU_CTRL_OPTION_STATUS) {
+        subopcode = FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE;
+        data = &data_buf;
+        data_len = sizeof(data_buf);
+        timeout_ms = 1;
+    } else {
+        subopcode = FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE;
+        mode = flags == FADU_CTRL_OPTION_ENABLE ? 1 : 0;
+    }
+
+    err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
+        0, subopcode, 0, get_num_dwords(data_len), 0, mode, 0, 0, 0,
+        data_len, data, 0, NULL, timeout_ms, NULL);
+	if (!err) {
+        if (flags == FADU_CTRL_OPTION_STATUS)
+            printf("%s\n", data_buf ? "enabled" : "disabled");
+        else
+            printf("%s successfully\n", flags == FADU_CTRL_OPTION_ENABLE ? "enabled" : "disabled");
+    } else if (err > 0) {
+        nvme_show_status(err);
+    } else {
+        perror("log-page-directory");
+    }
+
+close_fd:
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
+}
