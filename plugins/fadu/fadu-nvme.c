@@ -63,8 +63,8 @@ struct fadu_user_data_erase_count {
 };
 
 struct fadu_thermal_status {
-    __u8 status;
     __u8 count;
+    __u8 status;
 };
 
 struct fadu_cloud_attrs_log {
@@ -175,6 +175,18 @@ static unsigned int get_num_dwords(unsigned int byte_len) {
         num_dwords += 1;
     
     return num_dwords;
+}
+
+static bool invalid_log_page_guid(__u8 *expected_guid, __u8 *actual_guid) {
+    int i;
+
+    for (i = 0; i < 16; i++) {
+        if (expected_guid[i] != actual_guid[i])	{
+            return true;
+        }
+    }
+
+    return false;
 }
 
 static char *current_thermal_status_to_string(__u8 status) {
@@ -370,10 +382,10 @@ void print_fadu_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_
 
 void print_fadu_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
 {
-    if (flags & JSON) {
-        print_fadu_cloud_attrs_log_json(cloud_attrs_log);
-        return;
-    }
+    if (flags & BINARY)
+        return d_raw((unsigned char *)cloud_attrs_log, sizeof(*cloud_attrs_log));
+    else if (flags & JSON)
+        return print_fadu_cloud_attrs_log_json(cloud_attrs_log);
 
     print_fadu_cloud_attrs_log_normal(cloud_attrs_log);
 }
@@ -421,6 +433,8 @@ void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
         memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
         memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
 
+        sprintf(ca_type_buf, "%s", commit_action_type_to_string(fw_act_history_entry->ca_type));
+        
         if (fw_act_history_entry->result == 0)
             sprintf(result_buf, "pass");
         else
@@ -435,7 +449,7 @@ void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
             le64_to_cpu(fw_act_history_entry->power_cycle));
         json_object_add_value_string(entry, "previous_firmware", prev_fw_buf);
         json_object_add_value_string(entry, "new_firmware_activated", new_fw_buf);
-        json_object_add_value_uint(entry, "slot_number", fw_act_history_entry->power_cycle);
+        json_object_add_value_uint(entry, "slot_number", fw_act_history_entry->slot);
         json_object_add_value_string(entry, "commit_action_type", ca_type_buf);
         json_object_add_value_string(entry, "result", result_buf);
 
@@ -486,13 +500,15 @@ void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
         memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
         memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
 
+        sprintf(ca_type_buf, "%s", commit_action_type_to_string(fw_act_history_entry->ca_type));
+
         printf("%-10"PRIu16"  ", le16_to_cpu(fw_act_history_entry->counter));
         printf("%-14s  ", timestamp_buf);
         printf("%-16"PRIu64"  ", le64_to_cpu(fw_act_history_entry->power_cycle));
         printf("%-8s  ", prev_fw_buf);
         printf("%-9s  ", new_fw_buf);
         printf("%-6"PRIu8"  ", fw_act_history_entry->slot);
-        printf("%-6s  ", commit_action_type_to_string(fw_act_history_entry->ca_type));
+        printf("%-6s  ", ca_type_buf);
 
         if (fw_act_history_entry->result == 0)
             printf("pass\n");
@@ -504,10 +520,10 @@ void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
 
 void print_fadu_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
 {
-    if (flags & JSON) {
-        print_fadu_fw_act_history_json(fw_act_history);
-        return;
-    }
+    if (flags & BINARY)
+        return d_raw((unsigned char *)fw_act_history, sizeof(*fw_act_history));
+    else if (flags & JSON)
+        return print_fadu_fw_act_history_json(fw_act_history);
 
     print_fadu_fw_act_history_normal(fw_act_history);
 }
@@ -656,11 +672,16 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
 {
     struct fadu_cloud_attrs_log cloud_attrs_log;
 	const char *desc ="Retrieve SMART Cloud Attributes log for the given device.";
-	enum nvme_print_flags flags;
-	int err, fd;
+    const char *raw = "output in binary format";
+    int flags, err, fd;
+    __u8 log_page_guid[16] = {
+        0xC5, 0xAF, 0x10, 0x28, 0xEA, 0xBF, 0xF2, 0xA4,
+        0x9C, 0x4F, 0x6F, 0x7C, 0xC9, 0x14, 0xD5, 0xAF
+    };
 
 	struct config {
 		char *output_format;
+        int raw_binary;
 	};
 
 	struct config cfg = {
@@ -668,7 +689,8 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+        OPT_FLAG("raw-binary",   'b', &cfg.raw_binary,    raw),
 		OPT_END()
 	};
 
@@ -677,17 +699,26 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
 		goto ret;
 
 	err = flags = validate_output_format(cfg.output_format);
-	if (flags < 0)
-		goto close_fd;
+	if (flags < 0) {
+        fprintf(stderr, "[ERROR] invalid output format: %s\n", cfg.output_format);
+        goto close_fd;
+    }
+    if (cfg.raw_binary) {
+        flags = BINARY;
+    }
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_SMART_CLOUD_ATTRIBUTES,
         false, sizeof(cloud_attrs_log), &cloud_attrs_log);
-	if (!err)
-		print_fadu_cloud_attrs_log(&cloud_attrs_log, flags);
-	else if (err > 0)
+	if (!err) {
+        if (invalid_log_page_guid(log_page_guid, cloud_attrs_log.log_page_guid))
+            fprintf(stderr, "invalid log page format\n");
+        else
+            print_fadu_cloud_attrs_log(&cloud_attrs_log, flags);
+    } else if (err > 0) {
 		nvme_show_status(err);
-	else
+    } else {
 		perror("vs-smart-add-log");
+    }
 
 close_fd:
 	close(fd);
@@ -700,11 +731,16 @@ static int fadu_vs_internal_log(int argc, char **argv, struct command *cmd, stru
 static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { 
     struct fadu_fw_act_history fw_act_history;
 	const char *desc ="Retrieve FW activate history table for the given device.";
-	enum nvme_print_flags flags;
-	int err, fd;
+    const char *raw = "output in binary format";
+    int flags, err, fd;
+    __u8 log_page_guid[16] = {
+        0x6D, 0x79, 0x9A, 0x76, 0xB4, 0xDA, 0xF6, 0xA3,
+        0xE2, 0x4D, 0xB2, 0x8A, 0xAC, 0xF3, 0x1C, 0xD1
+    };
 
 	struct config {
 		char *output_format;
+        int raw_binary;
 	};
 
 	struct config cfg = {
@@ -712,7 +748,8 @@ static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cm
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+        OPT_FLAG("raw-binary",   'b', &cfg.raw_binary,    raw),
 		OPT_END()
 	};
 
@@ -721,17 +758,26 @@ static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cm
 		goto ret;
 
 	err = flags = validate_output_format(cfg.output_format);
-	if (flags < 0)
+	if (flags < 0) {
+        fprintf(stderr, "[ERROR] invalid output format: %s\n", cfg.output_format);
 		goto close_fd;
+    }
+    if (cfg.raw_binary) {
+        flags = BINARY;
+    }
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_FW_ACTIVATE_HISTORY,
         false, sizeof(fw_act_history), &fw_act_history);
-	if (!err)
-		print_fadu_fw_act_history(&fw_act_history, flags);
-	else if (err > 0)
+	if (!err) {
+        if (invalid_log_page_guid(log_page_guid, fw_act_history.log_page_guid))
+            fprintf(stderr, "invalid log page format\n");
+        else
+            print_fadu_fw_act_history(&fw_act_history, flags);
+    } else if (err > 0) {
 		nvme_show_status(err);
-	else
+    } else {
 		perror("vs-fw-activate-history");
+    }
 
 close_fd:
 	close(fd);
