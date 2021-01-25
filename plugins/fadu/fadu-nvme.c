@@ -563,10 +563,10 @@ void print_fadu_drive_info_normal(struct fadu_drive_info *drive_info) {
 
 void print_fadu_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_flags flags)
 {
-    if (flags & JSON) {
-        print_fadu_drive_info_json(drive_info);
-        return;
-    }
+    if (flags & BINARY)
+        return d_raw((unsigned char *)drive_info, sizeof(*drive_info));
+    else if (flags & JSON)
+        return print_fadu_drive_info_json(drive_info);
 
     print_fadu_drive_info_normal(drive_info);
 }
@@ -788,12 +788,13 @@ ret:
 static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
     struct fadu_drive_info drive_info;
 	const char *desc ="Retrieve drive information for the given device.";
-	enum nvme_print_flags flags;
-	int err, fd;
+    const char *raw = "output in binary format";
+    int flags, err, fd;
     __u32 data_len;
 
 	struct config {
 		char *output_format;
+        int raw_binary;
 	};
 
 	struct config cfg = {
@@ -801,7 +802,8 @@ static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+        OPT_FLAG("raw-binary",   'b', &cfg.raw_binary,    raw),
 		OPT_END()
 	};
 
@@ -810,8 +812,13 @@ static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct
 		goto ret;
 
 	err = flags = validate_output_format(cfg.output_format);
-	if (flags < 0)
+	if (flags < 0) {
+        fprintf(stderr, "[ERROR] invalid output format: %s\n", cfg.output_format);
 		goto close_fd;
+    }
+    if (cfg.raw_binary) {
+        flags = BINARY;
+    }
 
     data_len = sizeof(drive_info);
     err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
