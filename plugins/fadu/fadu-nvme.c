@@ -125,12 +125,12 @@ struct __attribute__((packed)) fadu_fw_act_history {
 };
 
 struct fadu_drive_info {
-    __u32 drive_hw_revision;
+    __u32 hw_revision;
     __u32 ftl_unit_size;
 };
 
 struct fadu_log_page_directory {
-    __u32 num_logs;
+    __u32 num_log_ids;
     __u8  rsvd4[12];
     __u8  log_ids[256];
     __u8  rsvd272[240];
@@ -138,8 +138,6 @@ struct fadu_log_page_directory {
 
 static const int plugin_version_major = 1;
 static const int plugin_version_minor = 0;
-
-static const char *output_format_no_binary = "Output format: normal|json";
 
 enum fadu_ctrl_option_flags validate_fadu_ctrl_option(char *format)
 {
@@ -386,12 +384,12 @@ static const char *commit_action_type_to_string(__u8 ca_type) {
     return ca_values[ca_type & 7];
 }
 
-void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) {
+void print_fadu_fw_act_history_json(struct fadu_fw_act_history *history) {
 	struct json_object *root;
     struct json_object *entry;
     struct json_array *entries;
     __u32 num_entries;
-    struct fadu_fw_act_history_entry *fw_act_history_entry;
+    struct fadu_fw_act_history_entry *history_entry;
     char timestamp_buf[20];
 	char prev_fw_buf[9];
 	char new_fw_buf[9];
@@ -403,10 +401,10 @@ void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
 
     root = json_create_object();
     entries = json_create_array();
-    num_entries = le32_to_cpu(fw_act_history->num_entries);
+    num_entries = le32_to_cpu(history->num_entries);
 
     for (i = 0; i < num_entries; i++) {
-        fw_act_history_entry = &fw_act_history->entries[i];
+        history_entry = &history->entries[i];
 
         memset((void *) timestamp_buf, 0, 20);
         memset((void *) prev_fw_buf, 0, 9);
@@ -414,32 +412,32 @@ void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
         memset((void *) ca_type_buf, 0, 8);
         memset((void *) result_buf, 0, 12);
 
-        timestamp = le64_to_cpu(fw_act_history_entry->timestamp) / 1000;
+        timestamp = le64_to_cpu(history_entry->timestamp) / 1000;
         hour = timestamp / 3600;
         min = (timestamp % 3600) / 60;
         sec = timestamp % 60;
         sprintf(timestamp_buf, "%"PRIu64":%02"PRIu8":%02"PRIu8"", hour, min, sec);
 
-        memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
-        memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
+        memcpy(prev_fw_buf, (char *) &(history_entry->prev_fw), 8);
+        memcpy(new_fw_buf, (char *) &(history_entry->new_fw), 8);
 
-        sprintf(ca_type_buf, "%s", commit_action_type_to_string(fw_act_history_entry->ca_type));
+        sprintf(ca_type_buf, "%s", commit_action_type_to_string(history_entry->ca_type));
         
-        if (fw_act_history_entry->result == 0)
+        if (history_entry->result == 0)
             sprintf(result_buf, "pass");
         else
-            sprintf(result_buf, "fail #%"PRIu16"", le16_to_cpu(fw_act_history_entry->result));
+            sprintf(result_buf, "fail #%"PRIu16"", le16_to_cpu(history_entry->result));
 
         entry = json_create_object();
 
         json_object_add_value_uint(entry, "firwmare_action_counter", 
-            le16_to_cpu(fw_act_history_entry->counter));
+            le16_to_cpu(history_entry->counter));
         json_object_add_value_string(entry, "power_on_hour", timestamp_buf);
-        json_object_add_value_uint(entry, "power_cycle_count", 
-            le64_to_cpu(fw_act_history_entry->power_cycle));
+        json_object_add_value_uint(entry, "power_cycle_count",
+            le64_to_cpu(history_entry->power_cycle));
         json_object_add_value_string(entry, "previous_firmware", prev_fw_buf);
         json_object_add_value_string(entry, "new_firmware_activated", new_fw_buf);
-        json_object_add_value_uint(entry, "slot_number", fw_act_history_entry->slot);
+        json_object_add_value_uint(entry, "slot_number", history_entry->slot);
         json_object_add_value_string(entry, "commit_action_type", ca_type_buf);
         json_object_add_value_string(entry, "result", result_buf);
 
@@ -453,9 +451,9 @@ void print_fadu_fw_act_history_json(struct fadu_fw_act_history *fw_act_history) 
     json_free_object(root);
 }
 
-void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history) {
+void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *history) {
     __u32 num_entries;
-    struct fadu_fw_act_history_entry *fw_act_history_entry;
+    struct fadu_fw_act_history_entry *history_entry;
     char timestamp_buf[20];
 	char prev_fw_buf[9];
 	char new_fw_buf[9];
@@ -471,54 +469,54 @@ void print_fadu_fw_act_history_normal(struct fadu_fw_act_history *fw_act_history
     printf("Counter                     Count                       Activated          Type               \n");
     printf("----------  --------------  ----------------  --------  ---------  ------  ------  -----------\n");
 
-    num_entries = le32_to_cpu(fw_act_history->num_entries);
+    num_entries = le32_to_cpu(history->num_entries);
 
     for (i = 0; i < num_entries; i++) {
-        fw_act_history_entry = &fw_act_history->entries[i];
+        history_entry = &history->entries[i];
 
         memset((void *)timestamp_buf, 0, 20);
         memset((void *)prev_fw_buf, 0, 9);
         memset((void *)new_fw_buf, 0, 9);
         memset((void *)ca_type_buf, 0, 8);
 
-        timestamp = le64_to_cpu(fw_act_history_entry->timestamp) / 1000;
+        timestamp = le64_to_cpu(history_entry->timestamp) / 1000;
         hour = timestamp / 3600;
         min = (timestamp % 3600) / 60;
         sec = timestamp % 60;
         sprintf(timestamp_buf, "%"PRIu64":%02"PRIu8":%02"PRIu8"", hour, min, sec);
 
-        memcpy(prev_fw_buf, (char *) &(fw_act_history_entry->prev_fw), 8);
-        memcpy(new_fw_buf, (char *) &(fw_act_history_entry->new_fw), 8);
+        memcpy(prev_fw_buf, (char *) &(history_entry->prev_fw), 8);
+        memcpy(new_fw_buf, (char *) &(history_entry->new_fw), 8);
 
-        sprintf(ca_type_buf, "%s", commit_action_type_to_string(fw_act_history_entry->ca_type));
+        sprintf(ca_type_buf, "%s", commit_action_type_to_string(history_entry->ca_type));
 
-        printf("%-10"PRIu16"  ", le16_to_cpu(fw_act_history_entry->counter));
+        printf("%-10"PRIu16"  ", le16_to_cpu(history_entry->counter));
         printf("%-14s  ", timestamp_buf);
-        printf("%-16"PRIu64"  ", le64_to_cpu(fw_act_history_entry->power_cycle));
+        printf("%-16"PRIu64"  ", le64_to_cpu(history_entry->power_cycle));
         printf("%-8s  ", prev_fw_buf);
         printf("%-9s  ", new_fw_buf);
-        printf("%-6"PRIu8"  ", fw_act_history_entry->slot);
+        printf("%-6"PRIu8"  ", history_entry->slot);
         printf("%-6s  ", ca_type_buf);
 
-        if (fw_act_history_entry->result == 0)
+        if (history_entry->result == 0)
             printf("pass\n");
         else
-            printf("fail #%"PRIu16"\n", le16_to_cpu(fw_act_history_entry->result));
+            printf("fail #%"PRIu16"\n", le16_to_cpu(history_entry->result));
     }
     printf("\n\n");
 }
 
-void print_fadu_fw_act_history(struct fadu_fw_act_history *fw_act_history, enum nvme_print_flags flags)
+void print_fadu_fw_act_history(struct fadu_fw_act_history *history, enum nvme_print_flags flags)
 {
     if (flags & BINARY)
-        return d_raw((unsigned char *)fw_act_history, sizeof(*fw_act_history));
+        return d_raw((unsigned char *) history, sizeof(*history));
     else if (flags & JSON)
-        return print_fadu_fw_act_history_json(fw_act_history);
+        return print_fadu_fw_act_history_json(history);
 
-    print_fadu_fw_act_history_normal(fw_act_history);
+    print_fadu_fw_act_history_normal(history);
 }
 
-void print_fadu_drive_info_json(struct fadu_drive_info *drive_info) {
+void print_fadu_drive_info_json(struct fadu_drive_info *info) {
     struct json_object *root;
     char hw_rev_buf[20];
     __u16 hw_rev_major, hw_rev_minor;
@@ -527,38 +525,38 @@ void print_fadu_drive_info_json(struct fadu_drive_info *drive_info) {
 
     memset((void *) hw_rev_buf, 0, 20);
 
-    hw_rev_major = le32_to_cpu(drive_info->drive_hw_revision) / 10;
-    hw_rev_minor = le32_to_cpu(drive_info->drive_hw_revision) % 10;
+    hw_rev_major = le32_to_cpu(info->hw_revision) / 10;
+    hw_rev_minor = le32_to_cpu(info->hw_revision) % 10;
 
     sprintf(hw_rev_buf, "%"PRIu32".%"PRIu32, hw_rev_major, hw_rev_minor);
 
-    json_object_add_value_string(root, "drive_hw_revision", hw_rev_buf);
-    json_object_add_value_uint(root, "ftl_unit_size", le32_to_cpu(drive_info->ftl_unit_size));
+    json_object_add_value_string(root, "hw_revision", hw_rev_buf);
+    json_object_add_value_uint(root, "ftl_unit_size", le32_to_cpu(info->ftl_unit_size));
     
     json_print_object(root, NULL);
     printf("\n");
     json_free_object(root);
 }
 
-void print_fadu_drive_info_normal(struct fadu_drive_info *drive_info) {
+void print_fadu_drive_info_normal(struct fadu_drive_info *info) {
     __u16 hw_rev_major, hw_rev_minor;
 
-    hw_rev_major = le32_to_cpu(drive_info->drive_hw_revision) / 10;
-    hw_rev_minor = le32_to_cpu(drive_info->drive_hw_revision) % 10;
+    hw_rev_major = le32_to_cpu(info->hw_revision) / 10;
+    hw_rev_minor = le32_to_cpu(info->hw_revision) % 10;
 
-    printf("Drive HW Revision : %"PRIu32".%"PRIu32"\n", hw_rev_major, hw_rev_minor);
-    printf("FTL Unit Size     : %"PRIu32"\n", le32_to_cpu(drive_info->ftl_unit_size));
+    printf("HW Revision   : %"PRIu32".%"PRIu32"\n", hw_rev_major, hw_rev_minor);
+    printf("FTL Unit Size : %"PRIu32"\n", le32_to_cpu(info->ftl_unit_size));
     printf("\n\n");
 }
 
-void print_fadu_drive_info(struct fadu_drive_info *drive_info, enum nvme_print_flags flags)
+void print_fadu_drive_info(struct fadu_drive_info *info, enum nvme_print_flags flags)
 {
     if (flags & BINARY)
-        return d_raw((unsigned char *)drive_info, sizeof(*drive_info));
+        return d_raw((unsigned char *)info, sizeof(*info));
     else if (flags & JSON)
-        return print_fadu_drive_info_json(drive_info);
+        return print_fadu_drive_info_json(info);
 
-    print_fadu_drive_info_normal(drive_info);
+    print_fadu_drive_info_normal(info);
 }
 
 static const char *log_id_to_string(__u8 log_id)
@@ -601,27 +599,21 @@ static const char *log_id_to_string(__u8 log_id)
 	}
 }
 
-void print_fadu_log_page_directory_json(struct fadu_log_page_directory *log_page_directory) {
+void print_fadu_log_page_directory_json(struct fadu_log_page_directory *dir) {
 	struct json_object *root;
     struct json_object *entry;
     struct json_array *entries;
-    __u32 num_logs;
+    __u32 num_log_ids;
     __u8  log_id;
     int i;
 
     root = json_create_object();
     entries = json_create_array();
-    num_logs = le32_to_cpu(log_page_directory->num_logs);
+    num_log_ids = le32_to_cpu(dir->num_log_ids);
 
-    for (i = 0; i < num_logs; i++) {
-        log_id = log_page_directory->log_ids[i];
-        printf("0x%02X: %s\n", log_id, log_id_to_string(log_id));
-    }
-    entries = json_create_array();
-
-    for (i = 0; i < num_logs; i++) {
+    for (i = 0; i < num_log_ids; i++) {
         entry = json_create_object();
-        log_id = log_page_directory->log_ids[i];
+        log_id = dir->log_ids[i];
 
         json_object_add_value_uint(entry, "log_id", log_id);
         json_object_add_value_string(entry, "description", log_id_to_string(log_id));
@@ -636,26 +628,26 @@ void print_fadu_log_page_directory_json(struct fadu_log_page_directory *log_page
     json_free_object(root);
 }
 
-void print_fadu_log_page_directory_normal(struct fadu_log_page_directory *log_page_directory) {
-    __u32 num_logs;
+void print_fadu_log_page_directory_normal(struct fadu_log_page_directory *dir) {
+    __u32 num_log_ids;
     __u8  log_id;
     int i;
 
-    num_logs = le32_to_cpu(log_page_directory->num_logs);
-    for (i = 0; i < num_logs; i++) {
-        log_id = log_page_directory->log_ids[i];
+    num_log_ids = le32_to_cpu(dir->num_log_ids);
+    for (i = 0; i < num_log_ids; i++) {
+        log_id = dir->log_ids[i];
         printf("0x%02X: %s\n", log_id, log_id_to_string(log_id));
     }
 }
 
-void print_fadu_log_page_directory(struct fadu_log_page_directory *log_page_directory, enum nvme_print_flags flags)
+void print_fadu_log_page_directory(struct fadu_log_page_directory *dir, enum nvme_print_flags flags)
 {
-    if (flags & JSON) {
-        print_fadu_log_page_directory_json(log_page_directory);
-        return;
-    }
+    if (flags & BINARY)
+        return d_raw((unsigned char *) dir, sizeof(*dir));
+    else if (flags & JSON)
+        return print_fadu_log_page_directory_json(dir);
 
-    print_fadu_log_page_directory_normal(log_page_directory);
+    print_fadu_log_page_directory_normal(dir);
 }
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -719,7 +711,7 @@ ret:
 static int fadu_vs_internal_log(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
 
 static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { 
-    struct fadu_fw_act_history fw_act_history;
+    struct fadu_fw_act_history history;
 	const char *desc ="Retrieve FW activate history table for the given device.";
     const char *raw = "output in binary format";
     int flags, err, fd;
@@ -757,12 +749,12 @@ static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cm
     }
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_FW_ACTIVATE_HISTORY,
-        false, sizeof(fw_act_history), &fw_act_history);
+        false, sizeof(history), &history);
 	if (!err) {
-        if (invalid_log_page_guid(log_page_guid, fw_act_history.log_page_guid))
+        if (invalid_log_page_guid(log_page_guid, history.log_page_guid))
             fprintf(stderr, "invalid log page format\n");
         else
-            print_fadu_fw_act_history(&fw_act_history, flags);
+            print_fadu_fw_act_history(&history, flags);
     } else if (err > 0) {
 		nvme_show_status(err);
     } else {
@@ -776,7 +768,7 @@ ret:
 }
 
 static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
-    struct fadu_drive_info drive_info;
+    struct fadu_drive_info info;
 	const char *desc ="Retrieve drive information for the given device.";
     const char *raw = "output in binary format";
     int flags, err, fd;
@@ -810,12 +802,12 @@ static int fadu_vs_drive_info(int argc, char **argv, struct command *cmd, struct
         flags = BINARY;
     }
 
-    data_len = sizeof(drive_info);
+    data_len = sizeof(info);
     err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
         0, FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
-        data_len, &drive_info, 0, NULL, 0, NULL);
+        data_len, &info, 0, NULL, 0, NULL);
 	if (!err)
-		print_fadu_drive_info(&drive_info, flags);
+		print_fadu_drive_info(&info, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -878,14 +870,15 @@ ret:
 }
 
 static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
-    struct fadu_log_page_directory log_page_directory;
+    struct fadu_log_page_directory dir;
 	const char *desc ="Retrieve log page directory for the given device.";
-	enum nvme_print_flags flags;
-	int err, fd;
+    const char *raw = "output in binary format";
+    int flags, err, fd;
     __u32 data_len;
 
 	struct config {
 		char *output_format;
+        int raw_binary;
 	};
 
 	struct config cfg = {
@@ -893,7 +886,8 @@ static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, s
 	};
 
 	OPT_ARGS(opts) = {
-		OPT_FMT("output-format", 'o', &cfg.output_format, output_format_no_binary),
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+        OPT_FLAG("raw-binary",   'b', &cfg.raw_binary,    raw),
 		OPT_END()
 	};
 
@@ -902,15 +896,20 @@ static int fadu_log_page_directory(int argc, char **argv, struct command *cmd, s
 		goto ret;
 
 	err = flags = validate_output_format(cfg.output_format);
-	if (flags < 0)
+	if (flags < 0) {
+        fprintf(stderr, "[ERROR] invalid output format: %s\n", cfg.output_format);
 		goto close_fd;
+    }
+    if (cfg.raw_binary) {
+        flags = BINARY;
+    }
 
-    data_len = sizeof(log_page_directory);
+    data_len = sizeof(dir);
     err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0,
         0, FADU_VUC_SUBOPCODE_LOG_PAGE_DIR, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0,
-        data_len, &log_page_directory, 0, NULL, 0, NULL);
+        data_len, &dir, 0, NULL, 0, NULL);
 	if (!err)
-		print_fadu_log_page_directory(&log_page_directory, flags);
+		print_fadu_log_page_directory(&dir, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
