@@ -42,9 +42,9 @@ enum {
 };
 
 enum fadu_ctrl_option_flags {
-    FADU_CTRL_OPTION_ENABLE = 0,
+    FADU_CTRL_OPTION_ENABLE  = 0,
     FADU_CTRL_OPTION_DISABLE = 1,
-    FADU_CTRL_OPTION_STATUS = 2,
+    FADU_CTRL_OPTION_STATUS  = 2,
 };
 
 struct fadu_bad_nand_block_count {
@@ -982,7 +982,7 @@ static int fadu_vs_telemetry_controller_option(int argc, char **argv, struct com
     } else if (err > 0) {
         nvme_show_status(err);
     } else {
-        perror("log-page-directory");
+        perror("vs-telemetry-controller-option");
     }
 
 close_fd:
