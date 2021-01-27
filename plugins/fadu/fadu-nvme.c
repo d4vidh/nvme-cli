@@ -48,7 +48,7 @@ enum fadu_ctrl_option_flags {
 };
 
 struct fadu_bad_nand_block_count {
-    __u64 raw_count     : 48;
+    __u64 raw           : 48;
     __u16 normalized    : 16;
 };
 
@@ -63,8 +63,8 @@ struct fadu_user_data_erase_count {
 };
 
 struct fadu_thermal_status {
-    __u8 count;
-    __u8 status;
+    __u8 num_events;
+    __u8 current_status;
 };
 
 struct fadu_cloud_attrs_log {
@@ -192,19 +192,19 @@ static bool invalid_log_page_guid(__u8 *expected_guid, __u8 *actual_guid) {
 static char *current_thermal_status_to_string(__u8 status) {
     switch (status) {
     case 0x00:
-        return "Unthrottled";
+        return "unthrottled";
     case 0x01:
-        return "First Level Throttle";
+        return "first_level";
     case 0x02:
-        return "Second Level Throttle";
+        return "second_level";
     case 0x03:
-        return "Third Level Throttle";
+        return "third_level";
     default:
-        return "Invalid Status";
+        return "invalid";
     }
 }
 
-void print_fadu_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_log)
+void print_fadu_cloud_attrs_log_json(struct fadu_cloud_attrs_log *log)
 {
 	struct json_object *root;
     struct json_object *bad_user_nand_blocks;
@@ -212,94 +212,84 @@ void print_fadu_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_lo
     struct json_object *e2e_correction_counts;
     struct json_object *user_data_erase_counts;
     struct json_object *thermal_status;
-    char log_page_guid_buf[2 * sizeof(cloud_attrs_log->log_page_guid) + 3];
+    char log_page_guid_buf[2 * sizeof(log->log_page_guid) + 3];
     char *log_page_guid = log_page_guid_buf;
     int i;
 
     root = json_create_object();
 
     json_object_add_value_float(root, "physical_media_units_written",
-        int128_to_double(cloud_attrs_log->physical_media_units_written));
+        int128_to_double(log->physical_media_units_written));
     json_object_add_value_float(root, "physical_media_units_read",
-        int128_to_double(cloud_attrs_log->physical_media_units_read));
+        int128_to_double(log->physical_media_units_read));
     
     bad_user_nand_blocks = json_create_object();
 
-    json_object_add_value_uint(bad_user_nand_blocks, "normalized_value", 
-        le16_to_cpu(cloud_attrs_log->bad_user_nand_blocks.normalized));
-    json_object_add_value_uint(bad_user_nand_blocks, "raw_count", 
-        le64_to_cpu(cloud_attrs_log->bad_user_nand_blocks.raw_count));
+    json_object_add_value_uint(bad_user_nand_blocks, "normalized", 
+        le16_to_cpu(log->bad_user_nand_blocks.normalized));
+    json_object_add_value_uint(bad_user_nand_blocks, "raw", 
+        le64_to_cpu(log->bad_user_nand_blocks.raw));
     json_object_add_value_object(root, "bad_user_nand_blocks", bad_user_nand_blocks);
 
     bad_system_nand_blocks = json_create_object();
 
-    json_object_add_value_uint(bad_system_nand_blocks, "normalized_value", 
-        le16_to_cpu(cloud_attrs_log->bad_system_nand_blocks.normalized));
-    json_object_add_value_uint(bad_system_nand_blocks, "raw_count", 
-        le64_to_cpu(cloud_attrs_log->bad_system_nand_blocks.raw_count));
+    json_object_add_value_uint(bad_system_nand_blocks, "normalized", 
+        le16_to_cpu(log->bad_system_nand_blocks.normalized));
+    json_object_add_value_uint(bad_system_nand_blocks, "raw", 
+        le64_to_cpu(log->bad_system_nand_blocks.raw));
     json_object_add_value_object(root, "bad_system_nand_blocks", bad_system_nand_blocks);
 
-    json_object_add_value_uint(root, "xor_recovery_count",
-        le64_to_cpu(cloud_attrs_log->xor_recovery_count));
+    json_object_add_value_uint(root, "xor_recovery_count", le64_to_cpu(log->xor_recovery_count));
     json_object_add_value_uint(root, "uncorrectable_read_error_count",
-        le64_to_cpu(cloud_attrs_log->uncorrectable_read_error_count));
+        le64_to_cpu(log->uncorrectable_read_error_count));
     json_object_add_value_uint(root, "soft_ecc_error_count",
-        le64_to_cpu(cloud_attrs_log->soft_ecc_error_count));
+        le64_to_cpu(log->soft_ecc_error_count));
 
     e2e_correction_counts = json_create_object();
 
-    json_object_add_value_uint(e2e_correction_counts, "corrected_errors", 
-        le32_to_cpu(cloud_attrs_log->e2e_correction_counts.corrected));
-    json_object_add_value_uint(e2e_correction_counts, "detected_errors", 
-        le32_to_cpu(cloud_attrs_log->e2e_correction_counts.detected));
+    json_object_add_value_uint(e2e_correction_counts, "corrected", 
+        le32_to_cpu(log->e2e_correction_counts.corrected));
+    json_object_add_value_uint(e2e_correction_counts, "detected", 
+        le32_to_cpu(log->e2e_correction_counts.detected));
     json_object_add_value_object(root, "e2e_correction_counts", e2e_correction_counts);
 
-    json_object_add_value_uint(root, "system_data_percent_used",
-       cloud_attrs_log->system_data_percent_used);
-    json_object_add_value_uint(root, "refresh_counts",
-        le64_to_cpu(cloud_attrs_log->refresh_counts));
+    json_object_add_value_uint(root, "system_data_percent_used", log->system_data_percent_used);
+    json_object_add_value_uint(root, "refresh_counts", le64_to_cpu(log->refresh_counts));
 
     user_data_erase_counts = json_create_object();
 
-    json_object_add_value_uint(user_data_erase_counts, "minimum_user_data_erase_count", 
-        le32_to_cpu(cloud_attrs_log->user_data_erase_counts.minimum));
-    json_object_add_value_uint(user_data_erase_counts, "maximum_user_data_erase_count", 
-        le32_to_cpu(cloud_attrs_log->user_data_erase_counts.maximum));
+    json_object_add_value_uint(user_data_erase_counts, "minimum",
+        le32_to_cpu(log->user_data_erase_counts.minimum));
+    json_object_add_value_uint(user_data_erase_counts, "maximum", 
+        le32_to_cpu(log->user_data_erase_counts.maximum));
     json_object_add_value_object(root, "user_data_erase_counts", user_data_erase_counts);
 
     thermal_status = json_create_object();
 
-    json_object_add_value_string(thermal_status, "current_throttling_status", 
-        current_thermal_status_to_string(cloud_attrs_log->thermal_status.status));
-    json_object_add_value_uint(thermal_status, "number_of_thermal_throttling_events", 
-        cloud_attrs_log->thermal_status.count);
-    json_object_add_value_object(root, "thermal_throttling_status_and_count", thermal_status);
+    json_object_add_value_string(thermal_status, "current_status", 
+        current_thermal_status_to_string(log->thermal_status.current_status));
+    json_object_add_value_uint(thermal_status, "num_events", log->thermal_status.num_events);
+    json_object_add_value_object(root, "thermal_status", thermal_status);
 
-    json_object_add_value_uint(root, "pcie_correctable_error_count", 
-        le64_to_cpu(cloud_attrs_log->pcie_correctable_error_count));
+    json_object_add_value_uint(root, "pcie_correctable_error_count",
+        le64_to_cpu(log->pcie_correctable_error_count));
     json_object_add_value_uint(root, "incomplete_shutdowns", 
-        le32_to_cpu(cloud_attrs_log->incomplete_shutdowns));
-    json_object_add_value_uint(root, "percent_free_blocks", 
-        cloud_attrs_log->percent_free_blocks);
-    json_object_add_value_uint(root, "capacitor_health", 
-        le16_to_cpu(cloud_attrs_log->capacitor_health));
-    json_object_add_value_uint(root, "unaligned_io", 
-        le64_to_cpu(cloud_attrs_log->unaligned_io));
-    json_object_add_value_uint(root, "security_version_number", 
-        le64_to_cpu(cloud_attrs_log->security_version_number));
-    json_object_add_value_uint(root, "nuse", 
-        le64_to_cpu(cloud_attrs_log->nuse));
-    json_object_add_value_float(root, "plp_start_count",
-        int128_to_double(cloud_attrs_log->plp_start_count));
+        le32_to_cpu(log->incomplete_shutdowns));
+    json_object_add_value_uint(root, "percent_free_blocks", log->percent_free_blocks);
+    json_object_add_value_uint(root, "capacitor_health", le16_to_cpu(log->capacitor_health));
+    json_object_add_value_uint(root, "unaligned_io", le64_to_cpu(log->unaligned_io));
+    json_object_add_value_uint(root, "security_version_number",
+        le64_to_cpu(log->security_version_number));
+    json_object_add_value_uint(root, "nuse", le64_to_cpu(log->nuse));
+    json_object_add_value_float(root, "plp_start_count", int128_to_double(log->plp_start_count));
     json_object_add_value_float(root, "endurance_estimate",
-        int128_to_double(cloud_attrs_log->endurance_estimate));
-    json_object_add_value_uint(root, "log_page_version", 
-        le16_to_cpu(cloud_attrs_log->log_page_version));
+        int128_to_double(log->endurance_estimate));
+    json_object_add_value_uint(root, "log_page_version", le16_to_cpu(log->log_page_version));
 
     memset(log_page_guid, 0, sizeof(log_page_guid_buf));
     log_page_guid += sprintf(log_page_guid, "0x");
-    for (i = 0; i < sizeof(cloud_attrs_log->log_page_guid); i++)
-        log_page_guid += sprintf(log_page_guid, "%x", cloud_attrs_log->log_page_guid[15 - i]);
+    for (i = 0; i < sizeof(log->log_page_guid); i++)
+        log_page_guid += sprintf(log_page_guid, "%x", log->log_page_guid[15 - i]);
 
 	json_object_add_value_string(root, "log_page_guid", log_page_guid_buf);
 
@@ -308,86 +298,86 @@ void print_fadu_cloud_attrs_log_json(struct fadu_cloud_attrs_log *cloud_attrs_lo
     json_free_object(root);
 }
 
-void print_fadu_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *cloud_attrs_log)
+void print_fadu_cloud_attrs_log_normal(struct fadu_cloud_attrs_log *log)
 {
-    char log_page_guid_buf[2 * sizeof(cloud_attrs_log->log_page_guid) + 3];
+    char log_page_guid_buf[2 * sizeof(log->log_page_guid) + 3];
     char *log_page_guid = log_page_guid_buf;
     int i;
 
     printf("Smart Extended Log for NVME device:%s\n", devicename);
 
-    printf("Physical Media Units Written                           : %'.0Lf\n",
-        int128_to_double(cloud_attrs_log->physical_media_units_written));
-    printf("Physical Media Units Read                              : %'.0Lf\n",
-        int128_to_double(cloud_attrs_log->physical_media_units_read));
-    printf("Bad User NAND Blocks (Normalized)                      : %"PRIu16"%%\n",
-        le16_to_cpu(cloud_attrs_log->bad_user_nand_blocks.normalized));
-    printf("Bad User NAND Blocks (Raw)                             : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->bad_user_nand_blocks.raw_count));
-    printf("Bad System NAND Blocks (Normalized)                    : %"PRIu16"%%\n",
-        le16_to_cpu(cloud_attrs_log->bad_system_nand_blocks.normalized));
-    printf("Bad System NAND Blocks (Raw)                           : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->bad_system_nand_blocks.raw_count));
-    printf("XOR Recovery Count                                     : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->xor_recovery_count));
-    printf("Uncorrectable Read Error Count                         : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->uncorrectable_read_error_count));
-    printf("Soft ECC Error Count                                   : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->soft_ecc_error_count));
-    printf("End to End Correction Counts (Corrected)               : %"PRIu32"\n",
-        le32_to_cpu(cloud_attrs_log->e2e_correction_counts.corrected));
-    printf("End to End Correction Counts (Detected)                : %"PRIu32"\n",
-        le32_to_cpu(cloud_attrs_log->e2e_correction_counts.detected));
-    printf("System Data %% Used                                     : %"PRIu8"%%\n",
-        cloud_attrs_log->system_data_percent_used);
-    printf("Refresh Counts                                         : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->refresh_counts));
-    printf("User Data Erase Counts (Minimum)                       : %"PRIu32"\n",
-        le32_to_cpu(cloud_attrs_log->user_data_erase_counts.minimum));
-    printf("User Data Erase Counts (Maximum)                       : %"PRIu32"\n",
-        le32_to_cpu(cloud_attrs_log->user_data_erase_counts.maximum));
-    printf("Thermal Throttling Status and Count (Current Status)   : %s\n",
-        current_thermal_status_to_string(cloud_attrs_log->thermal_status.status));
-    printf("Thermal Throttling Status and Count (Number of Events) : %"PRIu8"\n",
-        cloud_attrs_log->thermal_status.count);
-    printf("PCIe Correctable Error Count                           : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->pcie_correctable_error_count));
-    printf("Incomplete Shutdowns                                   : %"PRIu32"\n",
-        le32_to_cpu(cloud_attrs_log->incomplete_shutdowns));
-    printf("%% Free Blocks                                          : %"PRIu8"%%\n",
-        cloud_attrs_log->percent_free_blocks);
-    printf("Capacitor Health                                       : %"PRIu16"%%\n",
-        le16_to_cpu(cloud_attrs_log->capacitor_health));
-    printf("Unaligned IO                                           : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->unaligned_io));
-    printf("Security Version Number                                : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->security_version_number));
-    printf("NUSE                                                   : %"PRIu64"\n",
-        le64_to_cpu(cloud_attrs_log->nuse));
-    printf("PLP Start Count                                        : %'.0Lf\n",
-        int128_to_double(cloud_attrs_log->plp_start_count));
-    printf("Endurance Estimate                                     : %'.0Lf\n",
-        int128_to_double(cloud_attrs_log->endurance_estimate));
-    printf("Log Page Version                                       : %"PRIu16"\n",
-        le16_to_cpu(cloud_attrs_log->log_page_version));
+    printf("Physical Media Units Written                 : %'.0Lf\n",
+        int128_to_double(log->physical_media_units_written));
+    printf("Physical Media Units Read                    : %'.0Lf\n",
+        int128_to_double(log->physical_media_units_read));
+    printf("Bad User NAND Blocks (Normalized)            : %"PRIu16"%%\n",
+        le16_to_cpu(log->bad_user_nand_blocks.normalized));
+    printf("Bad User NAND Blocks (Raw)                   : %"PRIu64"\n",
+        le64_to_cpu(log->bad_user_nand_blocks.raw));
+    printf("Bad System NAND Blocks (Normalized)          : %"PRIu16"%%\n",
+        le16_to_cpu(log->bad_system_nand_blocks.normalized));
+    printf("Bad System NAND Blocks (Raw)                 : %"PRIu64"\n",
+        le64_to_cpu(log->bad_system_nand_blocks.raw));
+    printf("XOR Recovery Count                           : %"PRIu64"\n",
+        le64_to_cpu(log->xor_recovery_count));
+    printf("Uncorrectable Read Error Count               : %"PRIu64"\n",
+        le64_to_cpu(log->uncorrectable_read_error_count));
+    printf("Soft ECC Error Count                         : %"PRIu64"\n",
+        le64_to_cpu(log->soft_ecc_error_count));
+    printf("End to End Correction Counts (Corrected)     : %"PRIu32"\n",
+        le32_to_cpu(log->e2e_correction_counts.corrected));
+    printf("End to End Correction Counts (Detected)      : %"PRIu32"\n",
+        le32_to_cpu(log->e2e_correction_counts.detected));
+    printf("System Data %% Used                           : %"PRIu8"%%\n",
+        log->system_data_percent_used);
+    printf("Refresh Counts                               : %"PRIu64"\n",
+        le64_to_cpu(log->refresh_counts));
+    printf("User Data Erase Counts (Minimum)             : %"PRIu32"\n",
+        le32_to_cpu(log->user_data_erase_counts.minimum));
+    printf("User Data Erase Counts (Maximum)             : %"PRIu32"\n",
+        le32_to_cpu(log->user_data_erase_counts.maximum));
+    printf("Thermal Throttling Status (Current Status)   : %s\n",
+        current_thermal_status_to_string(log->thermal_status.current_status));
+    printf("Thermal Throttling Status (Number of Events) : %"PRIu8"\n",
+        log->thermal_status.num_events);
+    printf("PCIe Correctable Error Count                 : %"PRIu64"\n",
+        le64_to_cpu(log->pcie_correctable_error_count));
+    printf("Incomplete Shutdowns                         : %"PRIu32"\n",
+        le32_to_cpu(log->incomplete_shutdowns));
+    printf("%% Free Blocks                                : %"PRIu8"%%\n",
+        log->percent_free_blocks);
+    printf("Capacitor Health                             : %"PRIu16"%%\n",
+        le16_to_cpu(log->capacitor_health));
+    printf("Unaligned IO                                 : %"PRIu64"\n",
+        le64_to_cpu(log->unaligned_io));
+    printf("Security Version Number                      : %"PRIu64"\n",
+        le64_to_cpu(log->security_version_number));
+    printf("NUSE                                         : %"PRIu64"\n",
+        le64_to_cpu(log->nuse));
+    printf("PLP Start Count                              : %'.0Lf\n",
+        int128_to_double(log->plp_start_count));
+    printf("Endurance Estimate                           : %'.0Lf\n",
+        int128_to_double(log->endurance_estimate));
+    printf("Log Page Version                             : %"PRIu16"\n",
+        le16_to_cpu(log->log_page_version));
     
     memset(log_page_guid, 0, sizeof(log_page_guid_buf));
     log_page_guid += sprintf(log_page_guid, "0x");
-    for (i = 0; i < sizeof(cloud_attrs_log->log_page_guid); i++)
-        log_page_guid += sprintf(log_page_guid, "%x", cloud_attrs_log->log_page_guid[15 - i]);
+    for (i = 0; i < sizeof(log->log_page_guid); i++)
+        log_page_guid += sprintf(log_page_guid, "%x", log->log_page_guid[15 - i]);
 
-    printf("Log Page GUID                                          : %s\n", log_page_guid_buf);
+    printf("Log Page GUID                                : %s\n", log_page_guid_buf);
     printf("\n\n");
 }
 
-void print_fadu_cloud_attrs_log(struct fadu_cloud_attrs_log *cloud_attrs_log, enum nvme_print_flags flags)
+void print_fadu_cloud_attrs_log(struct fadu_cloud_attrs_log *log, enum nvme_print_flags flags)
 {
     if (flags & BINARY)
-        return d_raw((unsigned char *)cloud_attrs_log, sizeof(*cloud_attrs_log));
+        return d_raw((unsigned char *)log, sizeof(*log));
     else if (flags & JSON)
-        return print_fadu_cloud_attrs_log_json(cloud_attrs_log);
+        return print_fadu_cloud_attrs_log_json(log);
 
-    print_fadu_cloud_attrs_log_normal(cloud_attrs_log);
+    print_fadu_cloud_attrs_log_normal(log);
 }
 
 static const char *commit_action_type_to_string(__u8 ca_type) {
@@ -670,7 +660,7 @@ void print_fadu_log_page_directory(struct fadu_log_page_directory *log_page_dire
 
 static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
-    struct fadu_cloud_attrs_log cloud_attrs_log;
+    struct fadu_cloud_attrs_log log;
 	const char *desc ="Retrieve SMART Cloud Attributes log for the given device.";
     const char *raw = "output in binary format";
     int flags, err, fd;
@@ -708,12 +698,12 @@ static int fadu_vs_smart_add_log(int argc, char **argv, struct command *cmd, str
     }
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_SMART_CLOUD_ATTRIBUTES,
-        false, sizeof(cloud_attrs_log), &cloud_attrs_log);
+        false, sizeof(log), &log);
 	if (!err) {
-        if (invalid_log_page_guid(log_page_guid, cloud_attrs_log.log_page_guid))
+        if (invalid_log_page_guid(log_page_guid, log.log_page_guid))
             fprintf(stderr, "invalid log page format\n");
         else
-            print_fadu_cloud_attrs_log(&cloud_attrs_log, flags);
+            print_fadu_cloud_attrs_log(&log, flags);
     } else if (err > 0) {
 		nvme_show_status(err);
     } else {
