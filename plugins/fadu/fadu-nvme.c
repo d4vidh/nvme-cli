@@ -7,6 +7,7 @@
 #include <limits.h>
 #include <linux/fs.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "nvme.h"
@@ -708,7 +709,189 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-static int fadu_vs_internal_log(int argc, char **argv, struct command *cmd, struct plugin *plugin) { return 0; }
+int __create_log_file(char *file_path, __u8 *data, __u32 length) {
+	int err, fd;
+
+	if (length == 0)
+		return -EINVAL;
+
+	err = fd = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	if (fd < 0) {
+		fprintf(stderr, "Failed to open output file %s: %s!\n", file_path, strerror(errno));
+		goto ret;
+	}
+
+	err = write(fd, data, length);
+	if (err < 0) {
+		fprintf(stderr, "Failed write: %s!\n", strerror(errno));
+		goto close_fd;
+	}
+
+    err = fsync(fd);
+	if (err < 0)
+		fprintf(stderr, "Failed fsync: %s!\n", strerror(errno));
+
+close_fd:
+	close(fd);
+ret:
+	return err;
+}
+
+int __get_internal_log(int fd, char *dir_name, int verbose) {
+    char cmd_buf[120];
+    char file_path[PATH_MAX];
+    struct nvme_smart_log smart_log;
+    struct fadu_cloud_attrs_log cloud_attrs_log;
+	void *telemetry_log;
+    const size_t bs = 512;
+	struct nvme_telemetry_log_page_hdr *hdr;
+	size_t full_size, offset = bs;
+	int err, output;
+
+    err = mkdir(dir_name, 0666);
+    if (err) goto ret;
+
+    if (verbose) printf("Cloud SMART log...\n");
+
+	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_SMART_CLOUD_ATTRIBUTES,
+        false, sizeof(cloud_attrs_log), &cloud_attrs_log);
+    if (!err) {
+        sprintf(file_path, "%s/cloud.bin", dir_name);
+        err = __create_log_file(file_path, (__u8 *) &cloud_attrs_log, sizeof(cloud_attrs_log));
+    } else {
+        fprintf(stderr, "Failed to retrieve Cloud SMART log!\n");
+    }
+
+    if (verbose) printf("NVMe SMART log...\n");
+    
+    err = nvme_smart_log(fd, NVME_NSID_ALL, &smart_log);
+	if (!err) {
+        sprintf(file_path, "%s/smart.bin", dir_name);
+        err = __create_log_file(file_path, (__u8 *) &smart_log, sizeof(smart_log));
+    } else {
+        fprintf(stderr, "Failed to retrieve Cloud SMART log!\n");
+    }
+
+    if (verbose) printf("NVMe Telemetry log...\n");
+    
+	hdr = malloc(bs);
+	telemetry_log = malloc(bs);
+	if (!hdr || !telemetry_log) {
+		fprintf(stderr, "Failed to allocate %zu bytes for log: %s\n",
+				bs, strerror(errno));
+		err = -ENOMEM;
+		goto free_mem;
+	}
+	memset(hdr, 0, bs);
+
+    sprintf(file_path, "%s/telemetry.bin", dir_name);
+	output = open(file_path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+	if (output < 0) {
+		fprintf(stderr, "Failed to open output file %s: %s!\n",
+				file_path, strerror(errno));
+		err = output;
+		goto free_mem;
+	}
+
+	err = nvme_get_telemetry_log(fd, hdr, 1, 0, bs, 0);
+	if (err < 0)
+		perror("get-telemetry-log");
+	else if (err > 0) {
+		nvme_show_status(err);
+		fprintf(stderr, "Failed to acquire telemetry header %d!\n", err);
+		goto close_output;
+	}
+
+	err = write(output, (void *) hdr, bs);
+	if (err != bs) {
+		fprintf(stderr, "Failed to flush all data to file!\n");
+		goto close_output;
+	}
+
+	full_size = (le16_to_cpu(hdr->dalb3) * bs) + offset;
+
+	while (offset != full_size) {
+		err = nvme_get_telemetry_log(fd, telemetry_log, 0, 0, bs, offset);
+		if (err < 0) {
+			perror("get-telemetry-log");
+			break;
+		} else if (err > 0) {
+			fprintf(stderr, "Failed to acquire full telemetry log!\n");
+			nvme_show_status(err);
+			break;
+		}
+
+		err = write(output, (void *) telemetry_log, bs);
+		if (err != bs) {
+			fprintf(stderr, "Failed to flush all data to file!\n");
+			break;
+		}
+		err = 0;
+		offset += bs;
+	}
+
+close_output:
+	close(output);
+free_mem:
+	free(hdr);
+	free(telemetry_log);
+
+    if (verbose) printf("Archiving...\n");
+
+    sprintf(cmd_buf, "tar --remove-files -czf %s.tar.gz %s", dir_name, dir_name);
+    err = system(cmd_buf);
+    if (err) {
+        fprintf(stderr, "Failed to create an archive file!\n");
+        goto ret;
+    }
+
+    printf("%s.tar.gz is generated.\n", dir_name);
+
+ret:
+    return err;
+}
+
+static int fadu_vs_internal_log(int argc, char **argv, struct command *cmd, struct plugin *plugin) {
+	const char *desc ="Retrieve FW internal log for the given device.";
+	const char *fname = "File name to save internal logs in compressed form";
+    const char *verbose = "Increase output verbosity";
+    int err, fd;
+
+	struct config {
+		char *file_name;
+        int verbose;
+	};
+
+	struct config cfg = {
+		.file_name = NULL,
+        .verbose = 0,
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FILE("output-file", 'o', &cfg.file_name, fname),
+        OPT_FLAG("verbose",     'v', &cfg.verbose,   verbose),
+		OPT_END()
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	if (!cfg.file_name) {
+		fprintf(stderr, "Please provide an output file!\n");
+		err = -EINVAL;
+		goto close_fd;
+	}
+
+    err = __get_internal_log(fd, cfg.file_name, cfg.verbose);
+	if (err < 0)
+		perror("vs-internal-log");
+
+close_fd:
+	close(fd);
+ret:
+	return err;
+}
 
 static int fadu_vs_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin) { 
     struct fadu_fw_act_history history;
