@@ -1,3 +1,5 @@
+// clang-format off
+
 #undef CMD_INC_FILE
 #define CMD_INC_FILE plugins/fadu/fadu-nvme
 
