@@ -42,12 +42,6 @@ enum {
 	FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE = 0x000C0000,
 };
 
-enum fadu_ctrl_option_flags {
-	FADU_CTRL_OPTION_ENABLE = 0,
-	FADU_CTRL_OPTION_DISABLE = 1,
-	FADU_CTRL_OPTION_STATUS = 2,
-};
-
 struct fadu_bad_nand_block_count {
 	__u64 raw : 48;
 	__u16 normalized : 16;
@@ -139,19 +133,6 @@ struct fadu_log_page_directory {
 
 static const int plugin_version_major = 1;
 static const int plugin_version_minor = 0;
-
-enum fadu_ctrl_option_flags validate_fadu_ctrl_option(char *format)
-{
-	if (!format)
-		return -EINVAL;
-	if (!strcmp(format, "enable"))
-		return FADU_CTRL_OPTION_ENABLE;
-	if (!strcmp(format, "disable"))
-		return FADU_CTRL_OPTION_DISABLE;
-	if (!strcmp(format, "status"))
-		return FADU_CTRL_OPTION_STATUS;
-	return -EINVAL;
-}
 
 static long double int128_to_double(__u8 *data)
 {
@@ -1123,7 +1104,9 @@ static int fadu_clear_fw_activate_history(int argc, char **argv,
 	int err, fd;
 	__u32 value = 1 << 31; /* Bit 31 - Clear Firmware Update History Log */
 
-	OPT_ARGS(opts) = { OPT_END() };
+	OPT_ARGS(opts) = {
+		OPT_END(),
+	};
 
 	err = fd = parse_and_open(argc, argv, desc, opts);
 	if (fd < 0)
@@ -1206,67 +1189,87 @@ static int fadu_cloud_ssd_plugin_version(int argc, char **argv,
 	return 0;
 }
 
-static int fadu_vs_telemetry_controller_option(int argc, char **argv,
-					       struct command *cmd,
-					       struct plugin *plugin)
+int __set_telemetry_ctrl_option(int fd, __u32 mode)
 {
-	const char *desc =
-		"Control controller-initiated telemetry log page for the given device.";
-	const char *option = "Option: enable|disable|status";
-	int flags;
+	int err;
+
+	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD,
+			    FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
+			    FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE, 0, 0, 0,
+			    mode, 0, 0, 0, 0, NULL, 0, NULL, 0, NULL);
+
+	if (!err)
+		printf("%s successfully\n", mode ? "enabled" : "disabled");
+
+	return err;
+}
+
+int __get_telemetry_ctrl_option(int fd)
+{
+	__u32 data_len, data;
+	int err;
+
+	data_len = sizeof(data);
+
+	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD,
+			    FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
+			    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE, 0,
+			    get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
+			    &data, 0, NULL, 1, NULL);
+	if (!err)
+		printf("%s\n", data ? "enabled" : "disabled");
+
+	return err;
+}
+
+static int control_telemetry_ctrl_option(int argc, char **argv,
+					 struct command *cmd,
+					 struct plugin *plugin)
+{
+	const char *desc = "Control controller-initiated telemetry log page";
+	char *enable = "Enable controller-initiated telemetry";
+	char *disable = "Disable controller-initiated telemetry";
+	char *status = "Displays controller-initiated telemetry status";
 	int err, fd;
-	__u32 data_buf;
-	__u32 subopcode;
-	__u32 mode = 0;
-	__u32 data_len = 0;
-	__u32 *data = NULL;
-	__u32 timeout_ms = 0;
 
 	struct config {
-		char *option;
+		int enable;
+		int disable;
+		int status;
 	};
 
 	struct config cfg = {
-		.option = "status",
+		.enable = 0,
+		.disable = 0,
+		.status = 0,
 	};
 
-	OPT_ARGS(opts) = { OPT_FMT("option", 'o', &cfg.option, option),
-			   OPT_END() };
+	OPT_ARGS(opts) = {
+		OPT_FLAG("enable", 'e', &cfg.enable, enable),
+		OPT_FLAG("disable", 'd', &cfg.disable, disable),
+		OPT_FLAG("status", 's', &cfg.status, status),
+		OPT_END(),
+	};
 
 	err = fd = parse_and_open(argc, argv, desc, opts);
 	if (fd < 0)
 		goto ret;
 
-	err = flags = validate_fadu_ctrl_option(cfg.option);
-	if (flags == -EINVAL) {
-		fprintf(stderr, "ERROR: invalid option: %s\n", cfg.option);
+	if ((cfg.enable + cfg.disable + cfg.status) != 1) {
+		fprintf(stderr, "Only one option allowed at a time!\n");
 		goto close_fd;
 	}
 
-	if (flags == FADU_CTRL_OPTION_STATUS) {
-		subopcode = FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE;
-		data = &data_buf;
-		data_len = sizeof(data_buf);
-		timeout_ms = 1;
-	} else {
-		subopcode = FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE;
-		mode = flags == FADU_CTRL_OPTION_ENABLE ? 1 : 0;
-	}
+	if (cfg.enable)
+		err = __set_telemetry_ctrl_option(fd, 1);
+	else if (cfg.disable)
+		err = __set_telemetry_ctrl_option(fd, 0);
+	else if (cfg.status)
+		err = __get_telemetry_ctrl_option(fd);
 
-	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD,
-			    FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0, subopcode, 0,
-			    get_num_dwords(data_len), 0, mode, 0, 0, 0,
-			    data_len, data, 0, NULL, timeout_ms, NULL);
-	if (!err) {
-		if (flags == FADU_CTRL_OPTION_STATUS)
-			printf("%s\n", data_buf ? "enabled" : "disabled");
-		else
-			printf("%s successfully\n",
-			       flags == FADU_CTRL_OPTION_ENABLE ? "enabled" :
-									"disabled");
-	} else if (err > 0) {
+	if (err > 0) {
 		nvme_show_status(err);
-	} else {
+	} else if (err > 0) {
 		perror("vs-telemetry-controller-option");
 	}
 
