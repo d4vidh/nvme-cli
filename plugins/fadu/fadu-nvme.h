@@ -9,17 +9,17 @@
 #include "cmd.h"
 
 PLUGIN(NAME("fadu", "Fadu vendor specific extensions"),
-    COMMAND_LIST(
-        ENTRY("vs-smart-add-log", "Retrieve SMART Information Extended Log", fadu_vs_smart_add_log)
-        ENTRY("vs-internal-log", "Retrieve FW Internal Log", fadu_vs_internal_log)
-        ENTRY("vs-fw-activate-history", "Retrieve FW Activation History", fadu_vs_fw_activate_history)
-        ENTRY("vs-drive-info", "Retrieve Drive Info", fadu_vs_drive_info)
-        ENTRY("clear-pcie-correctable-errors", "Clear PCIe Correctable Error Counters", fadu_clear_pcie_correctable_errors)
-        ENTRY("clear-fw-activate-history", "Clear FW Update History", fadu_clear_fw_activate_history)
-        ENTRY("log-page-directory", "Retrieve Log Page Directory", fadu_log_page_directory)
-        ENTRY("cloud-ssd-plugin-version", "Show Cloud SSD Plugin Version", fadu_cloud_ssd_plugin_version)
-        ENTRY("vs-telemetry-controller-option", "Control Controller-initiated Telemetry", control_telemetry_ctrl_option)
-    )
+	COMMAND_LIST(
+		ENTRY("vs-smart-add-log", "Retrieve SMART Information Extended Log", get_smart_add_log)
+		ENTRY("vs-internal-log", "Retrieve FW Internal Log", get_internal_log)
+		ENTRY("vs-fw-activate-history", "Retrieve FW Activation History", get_fw_activate_history)
+		ENTRY("vs-drive-info", "Retrieve Drive Info", get_drive_info)
+		ENTRY("log-page-directory", "Retrieve Log Page Directory", get_log_page_directory)
+		ENTRY("clear-pcie-correctable-errors", "Clear PCIe Correctable Error Counters", clear_pcie_correctable_errors)
+		ENTRY("clear-fw-activate-history", "Clear FW Update History", clear_fw_activate_history)
+		ENTRY("vs-telemetry-controller-option", "Control Controller-initiated Telemetry", control_telemetry_ctrl_option)
+		ENTRY("cloud-ssd-plugin-version", "Show Cloud SSD Plugin Version", cloud_ssd_plugin_version)
+	)
 );
 
 #endif
