@@ -652,7 +652,7 @@ static void show_fw_act_history_normal(struct ocp_fw_act_history *history)
 	char buf[32];
 	int i;
 
-	printf("Firmware Activate History Log for NVME device:%s\n", devicename);
+	printf("Firmware Activate History Log for NVME device: %s\n", devicename);
 
 	printf("Firmware    Power           Power             Previous  New        Slot    Commit  Result     \n");
 	printf("Activation  on Hour         Cycle             Firmware  Firmware   Number  Action             \n");
