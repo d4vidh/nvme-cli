@@ -19,3 +19,5 @@ cscope.*
 tests/__pycache__
 tests/nvmetests
 tests/*.pyc
+
+.vscode/
