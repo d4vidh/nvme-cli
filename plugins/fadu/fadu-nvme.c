@@ -136,7 +136,7 @@ static const int plugin_version_minor = 0;
 
 static const char *raw = "output in binary format";
 
-long double __int128_to_double(__u8 *data)
+static long double int128_to_double(__u8 *data)
 {
 	long double result = 0;
 	int i;
@@ -149,7 +149,7 @@ long double __int128_to_double(__u8 *data)
 	return result;
 }
 
-unsigned int __get_num_dwords(unsigned int byte_len)
+static unsigned int get_num_dwords(unsigned int byte_len)
 {
 	unsigned int num_dwords;
 
@@ -160,7 +160,7 @@ unsigned int __get_num_dwords(unsigned int byte_len)
 	return num_dwords;
 }
 
-void __stringify_log_page_guid(__u8 *guid, char *buf)
+static void stringify_log_page_guid(__u8 *guid, char *buf)
 {
 	char *ptr = buf;
 	int i;
@@ -172,7 +172,7 @@ void __stringify_log_page_guid(__u8 *guid, char *buf)
 		ptr += sprintf(ptr, "%x", guid[15 - i]);
 }
 
-char *__stringify_cloud_log_thermal_status(__u8 status)
+static char *stringify_cloud_log_thermal_status(__u8 status)
 {
 	switch (status) {
 	case 0x00:
@@ -188,7 +188,7 @@ char *__stringify_cloud_log_thermal_status(__u8 status)
 	}
 }
 
-void __show_cloud_smart_log_json(struct ocp_cloud_smart_log *log)
+static void show_cloud_smart_log_json(struct ocp_cloud_smart_log *log)
 {
 	struct json_object *root;
 	struct json_object *bad_user_nand_blocks;
@@ -219,14 +219,14 @@ void __show_cloud_smart_log_json(struct ocp_cloud_smart_log *log)
 
 	thermal_status = json_create_object();
 	json_object_add_value_string(thermal_status, "current_status",
-				     __stringify_cloud_log_thermal_status(log->thermal_status.current_status));
+				     stringify_cloud_log_thermal_status(log->thermal_status.current_status));
 	json_object_add_value_uint(thermal_status, "num_events", log->thermal_status.num_events);
 
 	root = json_create_object();
 	json_object_add_value_float(root, "physical_media_units_written",
-				    __int128_to_double(log->physical_media_units_written));
+				    int128_to_double(log->physical_media_units_written));
 	json_object_add_value_float(root, "physical_media_units_read",
-				    __int128_to_double(log->physical_media_units_read));
+				    int128_to_double(log->physical_media_units_read));
 	json_object_add_value_object(root, "bad_user_nand_blocks", bad_user_nand_blocks);
 	json_object_add_value_object(root, "bad_system_nand_blocks", bad_system_nand_blocks);
 	json_object_add_value_uint(root, "xor_recovery_count", le64_to_cpu(log->xor_recovery_count));
@@ -246,10 +246,10 @@ void __show_cloud_smart_log_json(struct ocp_cloud_smart_log *log)
 	json_object_add_value_uint(root, "unaligned_io", le64_to_cpu(log->unaligned_io));
 	json_object_add_value_uint(root, "security_version_number", le64_to_cpu(log->security_version_number));
 	json_object_add_value_uint(root, "nuse", le64_to_cpu(log->nuse));
-	json_object_add_value_float(root, "plp_start_count", __int128_to_double(log->plp_start_count));
-	json_object_add_value_float(root, "endurance_estimate", __int128_to_double(log->endurance_estimate));
+	json_object_add_value_float(root, "plp_start_count", int128_to_double(log->plp_start_count));
+	json_object_add_value_float(root, "endurance_estimate", int128_to_double(log->endurance_estimate));
 	json_object_add_value_uint(root, "log_page_version", le16_to_cpu(log->log_page_version));
-	__stringify_log_page_guid(log->log_page_guid, buf);
+	stringify_log_page_guid(log->log_page_guid, buf);
 	json_object_add_value_string(root, "log_page_guid", buf);
 
 	json_print_object(root, NULL);
@@ -257,15 +257,15 @@ void __show_cloud_smart_log_json(struct ocp_cloud_smart_log *log)
 	json_free_object(root);
 }
 
-void __show_cloud_smart_log_normal(struct ocp_cloud_smart_log *log)
+static void show_cloud_smart_log_normal(struct ocp_cloud_smart_log *log)
 {
 	char buf[2 * sizeof(log->log_page_guid) + 3];
 
 	printf("Smart Extended Log for NVME device:%s\n", devicename);
 	printf("Physical Media Units Written                 : %'.0Lf\n",
-	       __int128_to_double(log->physical_media_units_written));
+	       int128_to_double(log->physical_media_units_written));
 	printf("Physical Media Units Read                    : %'.0Lf\n",
-	       __int128_to_double(log->physical_media_units_read));
+	       int128_to_double(log->physical_media_units_read));
 	printf("Bad User NAND Blocks (Normalized)            : %" PRIu16 "%%\n",
 	       le16_to_cpu(log->bad_user_nand_blocks.normalized));
 	printf("Bad User NAND Blocks (Raw)                   : %" PRIu64 "\n",
@@ -289,7 +289,7 @@ void __show_cloud_smart_log_normal(struct ocp_cloud_smart_log *log)
 	printf("User Data Erase Counts (Maximum)             : %" PRIu32 "\n",
 	       le32_to_cpu(log->user_data_erase_counts.maximum));
 	printf("Thermal Throttling Status (Current Status)   : %s\n",
-	       __stringify_cloud_log_thermal_status(log->thermal_status.current_status));
+	       stringify_cloud_log_thermal_status(log->thermal_status.current_status));
 	printf("Thermal Throttling Status (Number of Events) : %" PRIu8 "\n", log->thermal_status.num_events);
 	printf("PCIe Correctable Error Count                 : %" PRIu64 "\n",
 	       le64_to_cpu(log->pcie_correctable_error_count));
@@ -300,22 +300,22 @@ void __show_cloud_smart_log_normal(struct ocp_cloud_smart_log *log)
 	printf("Security Version Number                      : %" PRIu64 "\n",
 	       le64_to_cpu(log->security_version_number));
 	printf("NUSE                                         : %" PRIu64 "\n", le64_to_cpu(log->nuse));
-	printf("PLP Start Count                              : %'.0Lf\n", __int128_to_double(log->plp_start_count));
-	printf("Endurance Estimate                           : %'.0Lf\n", __int128_to_double(log->endurance_estimate));
+	printf("PLP Start Count                              : %'.0Lf\n", int128_to_double(log->plp_start_count));
+	printf("Endurance Estimate                           : %'.0Lf\n", int128_to_double(log->endurance_estimate));
 	printf("Log Page Version                             : %" PRIu16 "\n", le16_to_cpu(log->log_page_version));
-	__stringify_log_page_guid(log->log_page_guid, buf);
+	stringify_log_page_guid(log->log_page_guid, buf);
 	printf("Log Page GUID                                : %s\n", buf);
 	printf("\n\n");
 }
 
-void __show_cloud_smart_log(struct ocp_cloud_smart_log *log, enum nvme_print_flags flags)
+static void show_cloud_smart_log(struct ocp_cloud_smart_log *log, enum nvme_print_flags flags)
 {
 	if (flags & BINARY)
 		return d_raw((unsigned char *)log, sizeof(*log));
 	else if (flags & JSON)
-		return __show_cloud_smart_log_json(log);
+		return show_cloud_smart_log_json(log);
 
-	__show_cloud_smart_log_normal(log);
+	show_cloud_smart_log_normal(log);
 }
 
 static int get_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -354,11 +354,11 @@ static int get_smart_add_log(int argc, char **argv, struct command *cmd, struct 
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_SMART_CLOUD_ATTRIBUTES, false, sizeof(log), &log);
 	if (!err) {
-		__stringify_log_page_guid(log.log_page_guid, buf);
+		stringify_log_page_guid(log.log_page_guid, buf);
 		if (strcmp(buf, "0xafd514c97c6f4f9ca4f2bfea2810afc5"))
 			fprintf(stderr, "Invalid GUID: %s\n", buf);
 		else
-			__show_cloud_smart_log(&log, flags);
+			show_cloud_smart_log(&log, flags);
 	} else if (err > 0) {
 		nvme_show_status(err);
 	} else {
@@ -371,7 +371,7 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-int __create_log_file(char *file_path, __u8 *data, __u32 length)
+static int create_log_file(char *file_path, __u8 *data, __u32 length)
 {
 	int err, fd;
 
@@ -400,7 +400,7 @@ ret:
 	return err;
 }
 
-int __get_internal_log(int fd, char *dir_name, int verbose)
+static int dump_internal_logs(int fd, char *dir_name, int verbose)
 {
 	char file_path[128];
 	struct nvme_smart_log smart_log;
@@ -418,7 +418,7 @@ int __get_internal_log(int fd, char *dir_name, int verbose)
 			   &cloud_smart_log);
 	if (!err) {
 		sprintf(file_path, "%s/cloud.bin", dir_name);
-		err = __create_log_file(file_path, (__u8 *)&cloud_smart_log, sizeof(cloud_smart_log));
+		err = create_log_file(file_path, (__u8 *)&cloud_smart_log, sizeof(cloud_smart_log));
 	} else {
 		fprintf(stderr, "Failed to dump Cloud SMART log!\n");
 	}
@@ -429,9 +429,9 @@ int __get_internal_log(int fd, char *dir_name, int verbose)
 	err = nvme_smart_log(fd, NVME_NSID_ALL, &smart_log);
 	if (!err) {
 		sprintf(file_path, "%s/smart.bin", dir_name);
-		err = __create_log_file(file_path, (__u8 *)&smart_log, sizeof(smart_log));
+		err = create_log_file(file_path, (__u8 *)&smart_log, sizeof(smart_log));
 	} else {
-		fprintf(stderr, "Failed to retrieve Cloud SMART log!\n");
+		fprintf(stderr, "Failed to dump NVMe SMART log!\n");
 	}
 
 	if (verbose)
@@ -553,7 +553,7 @@ static int get_internal_log(int argc, char **argv, struct command *cmd, struct p
 		goto close_fd;
 	}
 
-	err = __get_internal_log(fd, cfg.file_name, cfg.verbose);
+	err = dump_internal_logs(fd, cfg.file_name, cfg.verbose);
 	if (err < 0)
 		perror("vs-internal-log");
 
@@ -572,7 +572,7 @@ ret:
 	return err;
 }
 
-void __stringify_fw_act_history_timestamp(__u64 timestamp, char *buf, int len)
+static void stringify_fw_act_history_timestamp(__u64 timestamp, char *buf, int len)
 {
 	uint64_t secs, hour;
 	uint8_t min, sec;
@@ -586,14 +586,14 @@ void __stringify_fw_act_history_timestamp(__u64 timestamp, char *buf, int len)
 	sprintf(buf, "%" PRIu64 ":%02" PRIu8 ":%02" PRIu8 "", hour, min, sec);
 }
 
-const char *__stringify_fw_act_history_ca_type(__u8 ca_type)
+static const char *stringify_fw_act_history_ca_type(__u8 ca_type)
 {
 	const char *ca_values[8] = { "000b", "001b", "010b", "011b", "100b", "101b", "110b", "111b" };
 
 	return ca_values[ca_type & 7];
 }
 
-void __stringify_fw_act_history_result(__u16 result, char *buf, int len)
+static void stringify_fw_act_history_result(__u16 result, char *buf, int len)
 {
 	memset(buf, 0, sizeof(char) * len);
 
@@ -603,7 +603,7 @@ void __stringify_fw_act_history_result(__u16 result, char *buf, int len)
 		sprintf(buf, "fail #%" PRIu16 "", le16_to_cpu(result));
 }
 
-void __show_fw_act_history_json(struct ocp_fw_act_history *history)
+static void show_fw_act_history_json(struct ocp_fw_act_history *history)
 {
 	struct json_object *root;
 	struct json_object *entry;
@@ -620,7 +620,7 @@ void __show_fw_act_history_json(struct ocp_fw_act_history *history)
 		entry = json_create_object();
 
 		json_object_add_value_uint(entry, "firwmare_action_counter", le16_to_cpu(history->entries[i].counter));
-		__stringify_fw_act_history_timestamp(history->entries[i].timestamp, buf, 32);
+		stringify_fw_act_history_timestamp(history->entries[i].timestamp, buf, 32);
 		json_object_add_value_string(entry, "power_on_hour", buf);
 		json_object_add_value_uint(entry, "power_cycle_count", le64_to_cpu(history->entries[i].power_cycle));
 		memset((void *)buf, 0, 32);
@@ -631,9 +631,9 @@ void __show_fw_act_history_json(struct ocp_fw_act_history *history)
 		json_object_add_value_string(entry, "new_firmware_activated", buf);
 		json_object_add_value_uint(entry, "slot_number", history->entries[i].slot);
 		memset((void *)buf, 0, 32);
-		sprintf(buf, "%s", __stringify_fw_act_history_ca_type(history->entries[i].ca_type));
+		sprintf(buf, "%s", stringify_fw_act_history_ca_type(history->entries[i].ca_type));
 		json_object_add_value_string(entry, "commit_action_type", buf);
-		__stringify_fw_act_history_result(history->entries[i].result, buf, 32);
+		stringify_fw_act_history_result(history->entries[i].result, buf, 32);
 		json_object_add_value_string(entry, "result", buf);
 
 		json_array_add_value_object(entries, entry);
@@ -646,7 +646,7 @@ void __show_fw_act_history_json(struct ocp_fw_act_history *history)
 	json_free_object(root);
 }
 
-void __show_fw_act_history_normal(struct ocp_fw_act_history *history)
+static void show_fw_act_history_normal(struct ocp_fw_act_history *history)
 {
 	__u32 num_entries;
 	char buf[32];
@@ -663,7 +663,7 @@ void __show_fw_act_history_normal(struct ocp_fw_act_history *history)
 
 	for (i = 0; i < num_entries; i++) {
 		printf("%-10" PRIu16 "  ", le16_to_cpu(history->entries[i].counter));
-		__stringify_fw_act_history_timestamp(history->entries[i].timestamp, buf, 32);
+		stringify_fw_act_history_timestamp(history->entries[i].timestamp, buf, 32);
 		printf("%-14s  ", buf);
 		printf("%-16" PRIu64 "  ", le64_to_cpu(history->entries[i].power_cycle));
 		memset((void *)buf, 0, 32);
@@ -674,22 +674,22 @@ void __show_fw_act_history_normal(struct ocp_fw_act_history *history)
 		printf("%-9s  ", buf);
 		printf("%-6" PRIu8 "  ", history->entries[i].slot);
 		memset((void *)buf, 0, 32);
-		sprintf(buf, "%s", __stringify_fw_act_history_ca_type(history->entries[i].ca_type));
+		sprintf(buf, "%s", stringify_fw_act_history_ca_type(history->entries[i].ca_type));
 		printf("%-6s  ", buf);
-		__stringify_fw_act_history_result(history->entries[i].result, buf, 32);
+		stringify_fw_act_history_result(history->entries[i].result, buf, 32);
 		printf("%s\n", buf);
 	}
 	printf("\n\n");
 }
 
-void __show_fw_act_history(struct ocp_fw_act_history *history, enum nvme_print_flags flags)
+static void show_fw_act_history(struct ocp_fw_act_history *history, enum nvme_print_flags flags)
 {
 	if (flags & BINARY)
 		return d_raw((unsigned char *)history, sizeof(*history));
 	else if (flags & JSON)
-		return __show_fw_act_history_json(history);
+		return show_fw_act_history_json(history);
 
-	__show_fw_act_history_normal(history);
+	show_fw_act_history_normal(history);
 }
 
 static int get_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -728,11 +728,11 @@ static int get_fw_activate_history(int argc, char **argv, struct command *cmd, s
 
 	err = nvme_get_log(fd, NVME_NSID_ALL, FADU_LOG_FW_ACTIVATE_HISTORY, false, sizeof(history), &history);
 	if (!err) {
-		__stringify_log_page_guid(history.log_page_guid, buf);
+		stringify_log_page_guid(history.log_page_guid, buf);
 		if (strcmp(buf, "0xd11cf3ac8ab24de2a3f6dab4769a796d"))
 			fprintf(stderr, "Invalid GUID: %s\n", buf);
 		else
-			__show_fw_act_history(&history, flags);
+			show_fw_act_history(&history, flags);
 	} else if (err > 0) {
 		nvme_show_status(err);
 	} else {
@@ -745,7 +745,7 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-void __show_drive_info_json(struct ocp_drive_info *info)
+static void show_drive_info_json(struct ocp_drive_info *info)
 {
 	struct json_object *root;
 	char buf[20];
@@ -766,7 +766,7 @@ void __show_drive_info_json(struct ocp_drive_info *info)
 	json_free_object(root);
 }
 
-void __show_drive_info_normal(struct ocp_drive_info *info)
+static void show_drive_info_normal(struct ocp_drive_info *info)
 {
 	__u16 hw_rev_major, hw_rev_minor;
 
@@ -778,14 +778,14 @@ void __show_drive_info_normal(struct ocp_drive_info *info)
 	printf("\n\n");
 }
 
-void __show_drive_info(struct ocp_drive_info *info, enum nvme_print_flags flags)
+static void show_drive_info(struct ocp_drive_info *info, enum nvme_print_flags flags)
 {
 	if (flags & BINARY)
 		return d_raw((unsigned char *)info, sizeof(*info));
 	else if (flags & JSON)
-		return __show_drive_info_json(info);
+		return show_drive_info_json(info);
 
-	__show_drive_info_normal(info);
+	show_drive_info_normal(info);
 }
 
 static int get_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -824,10 +824,10 @@ static int get_drive_info(int argc, char **argv, struct command *cmd, struct plu
 
 	data_len = sizeof(info);
 	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
-			    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, __get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
+			    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
 			    &info, 0, NULL, 0, NULL);
 	if (!err)
-		__show_drive_info(&info, flags);
+		show_drive_info(&info, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -877,7 +877,7 @@ static const char *__log_id_to_description(__u8 log_id)
 	}
 }
 
-void __show_log_page_directory_json(struct ocp_log_page_directory *directory)
+static void show_log_page_directory_json(struct ocp_log_page_directory *directory)
 {
 	struct json_object *root;
 	struct json_object *entry;
@@ -907,7 +907,7 @@ void __show_log_page_directory_json(struct ocp_log_page_directory *directory)
 	json_free_object(root);
 }
 
-void __show_log_page_directory_normal(struct ocp_log_page_directory *directory)
+static void show_log_page_directory_normal(struct ocp_log_page_directory *directory)
 {
 	__u32 num_log_ids;
 	__u8 log_id;
@@ -920,14 +920,14 @@ void __show_log_page_directory_normal(struct ocp_log_page_directory *directory)
 	}
 }
 
-void __show_log_page_directory(struct ocp_log_page_directory *directory, enum nvme_print_flags flags)
+static void show_log_page_directory(struct ocp_log_page_directory *directory, enum nvme_print_flags flags)
 {
 	if (flags & BINARY)
 		return d_raw((unsigned char *)directory, sizeof(*directory));
 	else if (flags & JSON)
-		return __show_log_page_directory_json(directory);
+		return show_log_page_directory_json(directory);
 
-	__show_log_page_directory_normal(directory);
+	show_log_page_directory_normal(directory);
 }
 
 static int get_log_page_directory(int argc, char **argv, struct command *cmd, struct plugin *plugin)
@@ -966,10 +966,10 @@ static int get_log_page_directory(int argc, char **argv, struct command *cmd, st
 
 	data_len = sizeof(dir);
 	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
-			    FADU_VUC_SUBOPCODE_LOG_PAGE_DIR, 0, __get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
-			    &dir, 0, NULL, 0, NULL);
+			    FADU_VUC_SUBOPCODE_LOG_PAGE_DIR, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len, &dir,
+			    0, NULL, 0, NULL);
 	if (!err)
-		__show_log_page_directory(&dir, flags);
+		show_log_page_directory(&dir, flags);
 	else if (err > 0)
 		nvme_show_status(err);
 	else
@@ -1031,7 +1031,7 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-int __set_telemetry_ctrl_option(int fd, __u32 mode)
+static int set_telemetry_ctrl_option(int fd, __u32 mode)
 {
 	int err;
 
@@ -1044,15 +1044,15 @@ int __set_telemetry_ctrl_option(int fd, __u32 mode)
 	return err;
 }
 
-int __get_telemetry_ctrl_option(int fd)
+static int get_telemetry_ctrl_option(int fd)
 {
 	__u32 data_len, data;
 	int err;
 
 	data_len = sizeof(data);
 	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
-			    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE, 0, __get_num_dwords(data_len), 0, 0, 0, 0, 0,
-			    data_len, &data, 0, NULL, 1, NULL);
+			    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
+			    &data, 0, NULL, 1, NULL);
 	if (!err)
 		printf("%s\n", data ? "enabled" : "disabled");
 
@@ -1096,11 +1096,11 @@ static int control_telemetry_ctrl_option(int argc, char **argv, struct command *
 	}
 
 	if (cfg.enable)
-		err = __set_telemetry_ctrl_option(fd, 1);
+		err = set_telemetry_ctrl_option(fd, 1);
 	else if (cfg.disable)
-		err = __set_telemetry_ctrl_option(fd, 0);
+		err = set_telemetry_ctrl_option(fd, 0);
 	else if (cfg.status)
-		err = __get_telemetry_ctrl_option(fd);
+		err = get_telemetry_ctrl_option(fd);
 
 	if (err > 0) {
 		nvme_show_status(err);
