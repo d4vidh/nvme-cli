@@ -10,6 +10,7 @@
 
 PLUGIN(NAME("fadu", "Fadu vendor specific extensions"),
 	COMMAND_LIST(
+		ENTRY("fadu-smart-log", "Retrieve FADU SMART Log", get_fadu_smart_log)
 		ENTRY("vs-smart-add-log", "Retrieve SMART Information Extended Log", get_smart_add_log)
 		ENTRY("vs-internal-log", "Retrieve FW Internal Log", get_internal_log)
 		ENTRY("vs-fw-activate-history", "Retrieve FW Activation History", get_fw_activate_history)
