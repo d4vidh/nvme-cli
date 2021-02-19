@@ -113,8 +113,6 @@ enum {
 	DRV_FRONT_END_CC_ENABLE_COUNTS = 80,
 	DRV_FRONT_END_CC_DISABLE_COUNTS = 81,
 	DRV_TIME_WAITING_FOR_CC_ENABLE = 82,
-	DRV_CURRENT_POWER = 83,
-	DRV_LED_FAULT_STATUS = 84
 };
 
 enum {
@@ -122,14 +120,9 @@ enum {
 	NS_LOG_PAGE_END = 65535,
 	NS_HOST_GB_WRITTEN = 20,
 	NS_HOST_GB_READ = 21,
-	NS_MEDIA_GB_WRITTEN = 22,
-	NS_MEDIA_GB_READ = 23,
 	NS_HOST_FLUSHES_REQUESTED = 24,
-	NS_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB = 25,
 	NS_TOTAL_TRIM_COMMANDS_REQUESTED = 26,
 	NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION = 27,
-	NS_TLC_WRITE_AMPLIFICATION = 28,
-	NS_SLC_WRITE_AMPLIFICATION = 29
 };
 
 #define MAX_FADU_SMART_LOG_LENGTH 4096
@@ -368,8 +361,6 @@ static const char *const fadu_smart_log_drv_attrs_json[] = {
 	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "front_end_cc_enable_counts",
 	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "front_end_cc_disable_counts",
 	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "time_waiting_for_cc_enable",
-	[DRV_CURRENT_POWER] = "current_power",
-	[DRV_LED_FAULT_STATUS] = "led_fault_status",
 };
 
 static const char *stringify_fadu_smart_log_drv_attr_json(__u64 type_id)
@@ -383,9 +374,9 @@ static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
 	struct json_object *throttling_entry_counts;
 	char buf[16];
 	int offset = 0;
-	__u64 type_id, length, value, num_throt_levels = 0;
+	__u64 type_id, length, value, num_throttling_levels = 0;
 	const char *name;
-	int throt_entry_length, i;
+	int throttling_entry_length, i;
 
 	root = json_create_object();
 
@@ -406,11 +397,12 @@ static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
 			json_object_add_value_string(root, name, log->raw + offset);
 		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
 			throttling_entry_counts = json_create_object();
-			throt_entry_length = length / num_throt_levels;
-			for (i = 0; i < num_throt_levels; i++) {
+			throttling_entry_length = length / num_throttling_levels;
+			for (i = 0; i < num_throttling_levels; i++) {
 				memset(buf, 0, sizeof(char) * 16);
 				sprintf(buf, "L%d", i);
-				value = be_to_int(log->raw + offset + (i * throt_entry_length), throt_entry_length);
+				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
+						  throttling_entry_length);
 				json_object_add_value_uint(throttling_entry_counts, buf, value);
 			}
 			json_object_add_value_object(root, "throttling_entry_counts", throttling_entry_counts);
@@ -419,9 +411,10 @@ static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
 		} else {
 			value = be_to_int(log->raw + offset, length);
 			json_object_add_value_uint(root, name, value);
-			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-				num_throt_levels = value;
 		}
+
+		if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+			num_throttling_levels = value;
 
 		offset += length;
 	}
@@ -498,8 +491,6 @@ static const char *const fadu_smart_log_drv_attrs_normal[] = {
 	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "Front End CC_Enable Counts",
 	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "Front End CC_Disable Counts",
 	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "Time Waiting For CC_Enable",
-	[DRV_CURRENT_POWER] = "Current Power",
-	[DRV_LED_FAULT_STATUS] = "LED Fault Status",
 };
 
 static const char *stringify_fadu_smart_log_drv_attr_normal(__u64 type_id)
@@ -510,9 +501,9 @@ static const char *stringify_fadu_smart_log_drv_attr_normal(__u64 type_id)
 static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
 {
 	int offset = 0;
-	__u64 type_id, length, value, num_throt_levels = 0;
+	__u64 type_id, length, value, num_throttling_levels = 0;
 	const char *name;
-	int throt_entry_length, i;
+	int throttling_entry_length, i;
 
 	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
 		type_id = be_to_int(log->raw + offset, 2);
@@ -530,9 +521,10 @@ static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
 		if (is_fadu_smart_log_string_attr(type_id)) {
 			printf("%-40s: %s\n", name, log->raw + offset);
 		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
-			throt_entry_length = length / num_throt_levels;
-			for (i = 0; i < num_throt_levels; i++) {
-				value = be_to_int(log->raw + offset + (i * throt_entry_length), throt_entry_length);
+			throttling_entry_length = length / num_throttling_levels;
+			for (i = 0; i < num_throttling_levels; i++) {
+				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
+						  throttling_entry_length);
 				printf("%s (L%d)             : %lld\n", name, i, value);
 			}
 		} else if (length > 8) {
@@ -540,9 +532,10 @@ static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
 		} else {
 			value = be_to_int(log->raw + offset, length);
 			printf("%-40s: %lld\n", name, value);
-			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-				num_throt_levels = value;
 		}
+
+		if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+			num_throttling_levels = value;
 
 		offset += length;
 	}
@@ -553,14 +546,9 @@ static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
 static const char *const fadu_smart_log_ns_attrs_json[] = {
 	[NS_HOST_GB_WRITTEN] = "host_gb_written",
 	[NS_HOST_GB_READ] = "host_gb_read",
-	[NS_MEDIA_GB_WRITTEN] = "media_gb_written",
-	[NS_MEDIA_GB_READ] = "media_gb_read",
 	[NS_HOST_FLUSHES_REQUESTED] = "host_flushes_requested",
-	[NS_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "total_blocks_copied_due_to_read_disturb",
 	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "total_trim_commands_requested",
 	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "total_trim_commands_under_partition",
-	[NS_TLC_WRITE_AMPLIFICATION] = "tlc_write_amplification",
-	[NS_SLC_WRITE_AMPLIFICATION] = "slc_write_amplification",
 };
 
 static const char *stringify_fadu_smart_log_ns_attr_json(__u64 type_id)
@@ -606,14 +594,9 @@ static void show_fadu_smart_log_ns_json(struct fadu_smart_log *log)
 static const char *const fadu_smart_log_ns_attrs_normal[] = {
 	[NS_HOST_GB_WRITTEN] = "Host GB Written",
 	[NS_HOST_GB_READ] = "Host GB Read",
-	[NS_MEDIA_GB_WRITTEN] = "Media GB Written",
-	[NS_MEDIA_GB_READ] = "Media GB Read",
 	[NS_HOST_FLUSHES_REQUESTED] = "Host Flushes Requested",
-	[NS_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "Total Blocks Copied Due To Read Disturb",
 	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "Total Trim Commands Requested",
 	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "Total Trim Commands Under Partition",
-	[NS_TLC_WRITE_AMPLIFICATION] = "TLC Write Amplification",
-	[NS_SLC_WRITE_AMPLIFICATION] = "SLC Write Amplification",
 };
 
 static const char *stringify_fadu_smart_log_ns_attr_normal(__u64 type_id)
