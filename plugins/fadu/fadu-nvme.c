@@ -411,10 +411,9 @@ static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
 		} else {
 			value = be_to_int(log->raw + offset, length);
 			json_object_add_value_uint(root, name, value);
+			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+				num_throttling_levels = value;
 		}
-
-		if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-			num_throttling_levels = value;
 
 		offset += length;
 	}
@@ -532,10 +531,9 @@ static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
 		} else {
 			value = be_to_int(log->raw + offset, length);
 			printf("%-40s: %lld\n", name, value);
+			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+				num_throttling_levels = value;
 		}
-
-		if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-			num_throttling_levels = value;
 
 		offset += length;
 	}
