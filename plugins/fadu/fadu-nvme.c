@@ -138,6 +138,9 @@ struct ocp_thermal_status {
 	__u8 current_status;
 };
 
+/*
+	Functions used get_smart_add_log
+*/
 struct ocp_cloud_smart_log {
 	__u8 physical_media_units_written[16];
 	__u8 physical_media_units_read[16];
@@ -374,6 +377,12 @@ static void show_cloud_smart_log(struct ocp_cloud_smart_log *log, enum nvme_prin
 	show_cloud_smart_log_normal(log);
 }
 
+/**
+ * Retrieve SMART Information Extended log
+ * @getlog_id: 0xC0
+ * @option: --output-format=normal|json|binary,  --raw-binary: output in binary format
+ * @usage: nvme fadu vs-smart-add-log /dev/nvme0n1 --output-format=json
+ */
 static int get_smart_add_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	struct ocp_cloud_smart_log log;
@@ -395,7 +404,7 @@ static int get_smart_add_log(int argc, char **argv, struct command *cmd, struct 
 		OPT_FLAG("raw-binary", 'b', &cfg.raw_binary, raw),
 		OPT_END(),
 	};
-
+	
 	err = fd = parse_and_open(argc, argv, desc, opts);
 	if (fd < 0)
 		goto ret;
@@ -554,7 +563,13 @@ free_mem:
 
 	return err;
 }
-
+/**
+ * Retrieve FW Internal Log
+ * Output file includes smart-log, vs-smart-add-log, and telemetry-log.
+ * @getlog_id: 
+ * @option: --output-file=[fileName without extension]
+ * @usage: nvme fadu  vs-internal-log /dev/nvme0n1  --output-file=internal_log
+ */
 static int get_internal_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	const char *desc = "Retrieve FW internal log.\n"
@@ -750,6 +765,13 @@ static void show_fw_act_history(struct ocp_fw_act_history *history, enum nvme_pr
 	show_fw_act_history_normal(history);
 }
 
+
+/**
+ * Retrieve FW Activation History
+ * @getlog_id: 0xC2
+ * @option: --output-format=normal|json|binary
+ * @usage: nvme fadu vs-fw-activate-history /dev/nvme0n1 --output-format=normal
+ */
 static int get_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	struct ocp_fw_act_history history;
@@ -803,6 +825,12 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
+/**
+ * Clear PCIe Correctable Error Counters
+ * @getlog_id: 0xC3
+ * @option: 
+ * @usage: nvme fadu vs-fw-activate-history /dev/nvme0n1
+ */
 static int clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	const char *desc = "Clear PCIe correctable errors.";
@@ -828,6 +856,12 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
+/**
+ * Clear FW Update History
+ * @getlog_id: 0xC1
+ * @option: 
+ * @usage: nvme fadu vs-fw-activate-history /dev/nvme0n1
+ */
 static int clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	const char *desc = "Clear FW activation history.";
@@ -853,6 +887,12 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
+/**
+ * Show Cloud SSD Plugin Version
+ * @getlog_id:
+ * @option: 
+ * @usage:  nvme fadu cloud-ssd-plugin-version /dev/nvme0n1
+ */
 static int cloud_ssd_plugin_version(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
 	printf("cloud ssd plugin version: %d.%d\n", plugin_version_major, plugin_version_minor);
