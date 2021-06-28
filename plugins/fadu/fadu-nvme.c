@@ -187,7 +187,7 @@ struct __attribute__((packed)) ocp_fw_act_history_entry {
 	__u16 result;
 	__u8 rsvd50[14];
 };
-
+/**get_fw_activate_history*/
 struct __attribute__((packed)) ocp_fw_act_history {
 	__u8 log_id;
 	__u8 rsvd1[3];
