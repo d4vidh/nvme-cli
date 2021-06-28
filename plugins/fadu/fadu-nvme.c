@@ -29,7 +29,7 @@ enum {
 	FADU_LOG_CLOUD_SMART = 0xC0,
 	FADU_LOG_ERROR_RECOVERY = 0xC1,
 	FADU_LOG_FW_ACTIVATE_HISTORY = 0xC2,
-	FADU_LOG_VENDOR_SMART = 0xF0,
+	//FADU_LOG_VENDOR_SMART = 0xF0,
 };
 
 enum {
@@ -40,8 +40,8 @@ enum {
 enum {
 	FADU_VUC_SUBOPCODE_VS_DRIVE_INFO = 0x00080101,
 	FADU_VUC_SUBOPCODE_LOG_PAGE_DIR = 0x00080901,
-	FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE = 0x000C0101,
-	FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE = 0x000C0000,
+	// FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE = 0x000C0101,
+	// FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE = 0x000C0000,
 };
 
 enum {
@@ -1567,88 +1567,88 @@ ret:
 	return nvme_status_to_errno(err, false);
 }
 
-static int set_telemetry_ctrl_option(int fd, __u32 mode)
-{
-	int err;
+// static int set_telemetry_ctrl_option(int fd, __u32 mode)
+// {
+// 	int err;
 
-	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
-			    FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE, 0, 0, 0, mode, 0, 0, 0, 0, NULL, 0, NULL, 0, NULL);
+// 	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
+// 			    FADU_VUC_SUBOPCODE_SET_TELEMETRY_MODE, 0, 0, 0, mode, 0, 0, 0, 0, NULL, 0, NULL, 0, NULL);
 
-	if (!err)
-		printf("%s successfully\n", mode ? "enabled" : "disabled");
+// 	if (!err)
+// 		printf("%s successfully\n", mode ? "enabled" : "disabled");
 
-	return err;
-}
+// 	return err;
+// }
 
-static int get_telemetry_ctrl_option(int fd)
-{
-	__u32 data_len, data;
-	int err;
+// static int get_telemetry_ctrl_option(int fd)
+// {
+// 	__u32 data_len, data;
+// 	int err;
 
-	data_len = sizeof(data);
-	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
-			    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
-			    &data, 0, NULL, 1, NULL);
-	if (!err)
-		printf("%s\n", data ? "enabled" : "disabled");
+// 	data_len = sizeof(data);
+// 	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
+// 			    FADU_VUC_SUBOPCODE_GET_TELEMETRY_MODE, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
+// 			    &data, 0, NULL, 1, NULL);
+// 	if (!err)
+// 		printf("%s\n", data ? "enabled" : "disabled");
 
-	return err;
-}
+// 	return err;
+// }
 
-static int control_telemetry_ctrl_option(int argc, char **argv, struct command *cmd, struct plugin *plugin)
-{
-	const char *desc = "Control controller-initiated telemetry log page.";
-	char *enable = "Enable controller-initiated telemetry";
-	char *disable = "Disable controller-initiated telemetry";
-	char *status = "Displays controller-initiated telemetry status";
-	int err, fd;
+// static int control_telemetry_ctrl_option(int argc, char **argv, struct command *cmd, struct plugin *plugin)
+// {
+// 	const char *desc = "Control controller-initiated telemetry log page.";
+// 	char *enable = "Enable controller-initiated telemetry";
+// 	char *disable = "Disable controller-initiated telemetry";
+// 	char *status = "Displays controller-initiated telemetry status";
+// 	int err, fd;
 
-	struct config {
-		int enable;
-		int disable;
-		int status;
-	};
+// 	struct config {
+// 		int enable;
+// 		int disable;
+// 		int status;
+// 	};
 
-	struct config cfg = {
-		.enable = 0,
-		.disable = 0,
-		.status = 0,
-	};
+// 	struct config cfg = {
+// 		.enable = 0,
+// 		.disable = 0,
+// 		.status = 0,
+// 	};
 
-	OPT_ARGS(opts) = {
-		OPT_FLAG("enable", 'e', &cfg.enable, enable),
-		OPT_FLAG("disable", 'd', &cfg.disable, disable),
-		OPT_FLAG("status", 's', &cfg.status, status),
-		OPT_END(),
-	};
+// 	OPT_ARGS(opts) = {
+// 		OPT_FLAG("enable", 'e', &cfg.enable, enable),
+// 		OPT_FLAG("disable", 'd', &cfg.disable, disable),
+// 		OPT_FLAG("status", 's', &cfg.status, status),
+// 		OPT_END(),
+// 	};
 
-	err = fd = parse_and_open(argc, argv, desc, opts);
-	if (fd < 0)
-		goto ret;
+// 	err = fd = parse_and_open(argc, argv, desc, opts);
+// 	if (fd < 0)
+// 		goto ret;
 
-	if ((cfg.enable + cfg.disable + cfg.status) != 1) {
-		fprintf(stderr, "Only one option allowed at a time!\n");
-		goto close_fd;
-	}
+// 	if ((cfg.enable + cfg.disable + cfg.status) != 1) {
+// 		fprintf(stderr, "Only one option allowed at a time!\n");
+// 		goto close_fd;
+// 	}
 
-	if (cfg.enable)
-		err = set_telemetry_ctrl_option(fd, 1);
-	else if (cfg.disable)
-		err = set_telemetry_ctrl_option(fd, 0);
-	else if (cfg.status)
-		err = get_telemetry_ctrl_option(fd);
+// 	if (cfg.enable)
+// 		err = set_telemetry_ctrl_option(fd, 1);
+// 	else if (cfg.disable)
+// 		err = set_telemetry_ctrl_option(fd, 0);
+// 	else if (cfg.status)
+// 		err = get_telemetry_ctrl_option(fd);
 
-	if (err > 0) {
-		nvme_show_status(err);
-	} else if (err > 0) {
-		perror("vs-telemetry-controller-option");
-	}
+// 	if (err > 0) {
+// 		nvme_show_status(err);
+// 	} else if (err > 0) {
+// 		perror("vs-telemetry-controller-option");
+// 	}
 
-close_fd:
-	close(fd);
-ret:
-	return nvme_status_to_errno(err, false);
-}
+// close_fd:
+// 	close(fd);
+// ret:
+// 	return nvme_status_to_errno(err, false);
+// }
 
 static int cloud_ssd_plugin_version(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
