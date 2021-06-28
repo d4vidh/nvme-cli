@@ -125,11 +125,11 @@ enum {
 	NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION = 27,
 };
 
-#define MAX_FADU_SMART_LOG_LENGTH 4096
+// #define MAX_FADU_SMART_LOG_LENGTH 4096
 
-struct fadu_smart_log {
-	__u8 raw[MAX_FADU_SMART_LOG_LENGTH];
-};
+// struct fadu_smart_log {
+// 	__u8 raw[MAX_FADU_SMART_LOG_LENGTH];
+// };
 
 struct ocp_bad_nand_block_count {
 	__u64 raw : 48;
@@ -238,31 +238,31 @@ static long double le_to_float(__u8 *data, int byte_len)
 	return result;
 }
 
-static long double be_to_float(__u8 *data, int byte_len)
-{
-	long double result = 0;
-	int i;
+// static long double be_to_float(__u8 *data, int byte_len)
+// {
+// 	long double result = 0;
+// 	int i;
 
-	for (i = 0; i < byte_len; i++) {
-		result *= 256;
-		result += data[i];
-	}
+// 	for (i = 0; i < byte_len; i++) {
+// 		result *= 256;
+// 		result += data[i];
+// 	}
 
-	return result;
-}
+// 	return result;
+// }
 
-static __u64 be_to_int(__u8 *data, int byte_len)
-{
-	__u64 result = 0;
-	int i;
+// static __u64 be_to_int(__u8 *data, int byte_len)
+// {
+// 	__u64 result = 0;
+// 	int i;
 
-	for (i = 0; i < byte_len; i++) {
-		result <<= 8;
-		result += data[i];
-	}
+// 	for (i = 0; i < byte_len; i++) {
+// 		result <<= 8;
+// 		result += data[i];
+// 	}
 
-	return result;
-}
+// 	return result;
+// }
 
 static const char *stringify_arg(const char *const *strings, size_t array_size, size_t idx)
 {
@@ -282,422 +282,422 @@ static unsigned int get_num_dwords(unsigned int byte_len)
 	return num_dwords;
 }
 
-static bool is_fadu_smart_log_string_attr(__u64 type_id)
-{
-	switch (type_id) {
-	case DRV_LOG_PAGE_SCHEME_VERSION:
-	case DRV_LOG_PAGE_VERSION:
-	case DRV_FIRMWARE_VERSION:
-		return true;
-	default:
-		return false;
-	}
-}
+// static bool is_fadu_smart_log_string_attr(__u64 type_id)
+// {
+// 	switch (type_id) {
+// 	case DRV_LOG_PAGE_SCHEME_VERSION:
+// 	case DRV_LOG_PAGE_VERSION:
+// 	case DRV_FIRMWARE_VERSION:
+// 		return true;
+// 	default:
+// 		return false;
+// 	}
+// }
 
-static const char *const fadu_smart_log_drv_attrs_json[] = {
-	[DRV_LOG_PAGE_SCHEME_VERSION] = "log_page_scheme_version",
-	[DRV_LOG_PAGE_VERSION] = "log_page_version",
-	[DRV_FIRMWARE_VERSION] = "firmware_version",
-	[DRV_UNEXPECTED_POWER_OFF_COUNT] = "unexpected_power_off_count",
-	[DRV_TOTAL_GROWN_BAD_BLOCKS] = "total_grown_bad_blocks",
-	[DRV_TOTAL_GROWN_BAD_BLOCKS_HIGHEST_DIE] = "total_grown_bad_blocks_highest_die",
-	[DRV_SMART_CRITICAL_EVENT_COUNT] = "smart_critical_event_count",
-	[DRV_SMART_STATUS] = "smart_status",
-	[DRV_AVAILABLE_SPARE_BLOCKS] = "available_spare_blocks",
-	[DRV_AVAILABLE_SPARE_THRESHOLD] = "available_spare_threshold",
-	[DRV_MAXIMUM_POSSIBLE_SPARE_BLOCKS] = "maximum_possible_spare_blocks",
-	[DRV_AVAILABLE_SPARE_BLOCKS_NORMALIZED] = "available_spare_blocks_normalized",
-	[DRV_TOTAL_RAW_READ_ERRORS] = "total_raw_read_errors",
-	[DRV_TOTAL_READ_ERRORS] = "total_read_errors",
-	[DRV_TOTAL_READ_ERRORS_CORRECTABLE] = "total_read_errors_correctable",
-	[DRV_TOTAL_READ_ERRORS_UNCORRECTABLE] = "total_read_errors_uncorrectable",
-	[DRV_TOTAL_READS_REQUIRING_HEROIC_RECOVERY] = "total_reads_requiring_heroic_recovery",
-	[DRV_TOTAL_READ_ERRORS_FROM_HOST_REQUESTS] = "total_read_errors_from_host_requests",
-	[DRV_TOTAL_INTERNAL_READ_ERRORS] = "total_internal_read_errors",
-	[DRV_TOTAL_ERASE_ERRORS] = "total_erase_errors",
-	[DRV_TOTAL_PROGRAM_ERORS] = "total_program_errors",
-	[DRV_POWER_ON_HOUR_COUNT] = "power_on_hour_count",
-	[DRV_POWER_CYCLE_COUNT] = "power_cycle_count",
-	[DRV_TLC_AVERAGE_PE_CYCLES] = "tlc_average_pe_cycles",
-	[DRV_TLC_MAXIMUM_PE_CYCLES] = "tlc_maximum_pe_cycles",
-	[DRV_TLC_MINIMUM_PE_CYCLES] = "tlc_minimum_pe_cycles",
-	[DRV_SLC_AVERAGE_PE_CYCLES] = "slc_average_pe_cycles",
-	[DRV_SLC_MAXIMUM_PE_CYCLES] = "slc_maximum_pe_cycles",
-	[DRV_SLC_MINIMUM_PE_CYCLES] = "slc_minimum_pe_cycles",
-	[DRV_CUSTOMER_SLC_BUFFER_SIZE_GB] = "customer_slc_buffer_size_gb",
-	[DRV_NORMALIZED_MEDIA_WEAR] = "normalized_media_wear",
-	[DRV_NORMALIZED_HOST_WEAR] = "normalized_host_wear",
-	[DRV_HOST_GB_WRITTEN] = "host_gb_written",
-	[DRV_HOST_GB_READ] = "host_gb_read",
-	[DRV_MEDIA_GB_WRITTEN] = "media_gb_written",
-	[DRV_MEDIA_GB_READ] = "media_gb_read",
-	[DRV_HOST_FLUSHES_REQUESTED] = "host_flushes_requested",
-	[DRV_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "total_blocks_copied_due_to_read_disturb",
-	[DRV_TOTAL_TRIM_COMMANDS_REQUESTED] = "total_trim_commands_requested",
-	[DRV_TOTAL_4K_TRIMS_EXECUTED] = "total_4k_trims_executed",
-	[DRV_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "total_trim_commands_under_partition",
-	[DRV_TOTAL_UNITS_OF_DATA_IN_REPLAY] = "total_units_of_data_in_replay",
-	[DRV_TLC_WRITE_AMPLIFICATION] = "tlc_write_amplification",
-	[DRV_SLC_WRITE_AMPLIFICATION] = "slc_write_amplification",
-	[DRV_TOTAL_THROTTLING_LEVELS] = "total_throttling_levels",
-	[DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL] = "throttling_entry_counts",
-	[DRV_FIRST_THROTTLE_TEMP_THRESHOLD] = "first_throttle_temp_threshold",
-	[DRV_SHUTDOWN_TEMP] = "shutdown_temp",
-	[DRV_NUMBER_OF_TEMP_SENSORS] = "number_of_temp_sensors",
-	[DRV_TEMP_SENSOR_0_CURRENT_TEMP] = "temp_sensor_0_current_temp",
-	[DRV_TEMP_SENSOR_0_MINIMUM_TEMP] = "temp_sensor_0_minimum_temp",
-	[DRV_TEMP_SENSOR_0_MAXIMUM_TEMP] = "temp_sensor_0_maximum_temp",
-	[DRV_TEMP_SENSOR_1_CURRENT_TEMP] = "temp_sensor_1_current_temp",
-	[DRV_TEMP_SENSOR_1_MINIMUM_TEMP] = "temp_sensor_1_minimum_temp",
-	[DRV_TEMP_SENSOR_1_MAXIMUM_TEMP] = "temp_sensor_1_maximum_temp",
-	[DRV_TEMP_SENSOR_2_CURRENT_TEMP] = "temp_sensor_2_current_temp",
-	[DRV_TEMP_SENSOR_2_MINIMUM_TEMP] = "temp_sensor_2_minimum_temp",
-	[DRV_TEMP_SENSOR_2_MAXIMUM_TEMP] = "temp_sensor_2_maximum_temp",
-	[DRV_TEMP_SENSOR_3_CURRENT_TEMP] = "temp_sensor_3_current_temp",
-	[DRV_TEMP_SENSOR_3_MINIMUM_TEMP] = "temp_sensor_3_minimum_temp",
-	[DRV_TEMP_SENSOR_3_MAXIMUM_TEMP] = "temp_sensor_3_maximum_temp",
-	[DRV_FRONT_END_LINK_DOWN_COUNTS] = "front_end_link_down_counts",
-	[DRV_FRONT_END_LINK_UP_COUNTS] = "front_end_link_up_counts",
-	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "front_end_cc_enable_counts",
-	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "front_end_cc_disable_counts",
-	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "time_waiting_for_cc_enable",
-};
+// static const char *const fadu_smart_log_drv_attrs_json[] = {
+// 	[DRV_LOG_PAGE_SCHEME_VERSION] = "log_page_scheme_version",
+// 	[DRV_LOG_PAGE_VERSION] = "log_page_version",
+// 	[DRV_FIRMWARE_VERSION] = "firmware_version",
+// 	[DRV_UNEXPECTED_POWER_OFF_COUNT] = "unexpected_power_off_count",
+// 	[DRV_TOTAL_GROWN_BAD_BLOCKS] = "total_grown_bad_blocks",
+// 	[DRV_TOTAL_GROWN_BAD_BLOCKS_HIGHEST_DIE] = "total_grown_bad_blocks_highest_die",
+// 	[DRV_SMART_CRITICAL_EVENT_COUNT] = "smart_critical_event_count",
+// 	[DRV_SMART_STATUS] = "smart_status",
+// 	[DRV_AVAILABLE_SPARE_BLOCKS] = "available_spare_blocks",
+// 	[DRV_AVAILABLE_SPARE_THRESHOLD] = "available_spare_threshold",
+// 	[DRV_MAXIMUM_POSSIBLE_SPARE_BLOCKS] = "maximum_possible_spare_blocks",
+// 	[DRV_AVAILABLE_SPARE_BLOCKS_NORMALIZED] = "available_spare_blocks_normalized",
+// 	[DRV_TOTAL_RAW_READ_ERRORS] = "total_raw_read_errors",
+// 	[DRV_TOTAL_READ_ERRORS] = "total_read_errors",
+// 	[DRV_TOTAL_READ_ERRORS_CORRECTABLE] = "total_read_errors_correctable",
+// 	[DRV_TOTAL_READ_ERRORS_UNCORRECTABLE] = "total_read_errors_uncorrectable",
+// 	[DRV_TOTAL_READS_REQUIRING_HEROIC_RECOVERY] = "total_reads_requiring_heroic_recovery",
+// 	[DRV_TOTAL_READ_ERRORS_FROM_HOST_REQUESTS] = "total_read_errors_from_host_requests",
+// 	[DRV_TOTAL_INTERNAL_READ_ERRORS] = "total_internal_read_errors",
+// 	[DRV_TOTAL_ERASE_ERRORS] = "total_erase_errors",
+// 	[DRV_TOTAL_PROGRAM_ERORS] = "total_program_errors",
+// 	[DRV_POWER_ON_HOUR_COUNT] = "power_on_hour_count",
+// 	[DRV_POWER_CYCLE_COUNT] = "power_cycle_count",
+// 	[DRV_TLC_AVERAGE_PE_CYCLES] = "tlc_average_pe_cycles",
+// 	[DRV_TLC_MAXIMUM_PE_CYCLES] = "tlc_maximum_pe_cycles",
+// 	[DRV_TLC_MINIMUM_PE_CYCLES] = "tlc_minimum_pe_cycles",
+// 	[DRV_SLC_AVERAGE_PE_CYCLES] = "slc_average_pe_cycles",
+// 	[DRV_SLC_MAXIMUM_PE_CYCLES] = "slc_maximum_pe_cycles",
+// 	[DRV_SLC_MINIMUM_PE_CYCLES] = "slc_minimum_pe_cycles",
+// 	[DRV_CUSTOMER_SLC_BUFFER_SIZE_GB] = "customer_slc_buffer_size_gb",
+// 	[DRV_NORMALIZED_MEDIA_WEAR] = "normalized_media_wear",
+// 	[DRV_NORMALIZED_HOST_WEAR] = "normalized_host_wear",
+// 	[DRV_HOST_GB_WRITTEN] = "host_gb_written",
+// 	[DRV_HOST_GB_READ] = "host_gb_read",
+// 	[DRV_MEDIA_GB_WRITTEN] = "media_gb_written",
+// 	[DRV_MEDIA_GB_READ] = "media_gb_read",
+// 	[DRV_HOST_FLUSHES_REQUESTED] = "host_flushes_requested",
+// 	[DRV_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "total_blocks_copied_due_to_read_disturb",
+// 	[DRV_TOTAL_TRIM_COMMANDS_REQUESTED] = "total_trim_commands_requested",
+// 	[DRV_TOTAL_4K_TRIMS_EXECUTED] = "total_4k_trims_executed",
+// 	[DRV_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "total_trim_commands_under_partition",
+// 	[DRV_TOTAL_UNITS_OF_DATA_IN_REPLAY] = "total_units_of_data_in_replay",
+// 	[DRV_TLC_WRITE_AMPLIFICATION] = "tlc_write_amplification",
+// 	[DRV_SLC_WRITE_AMPLIFICATION] = "slc_write_amplification",
+// 	[DRV_TOTAL_THROTTLING_LEVELS] = "total_throttling_levels",
+// 	[DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL] = "throttling_entry_counts",
+// 	[DRV_FIRST_THROTTLE_TEMP_THRESHOLD] = "first_throttle_temp_threshold",
+// 	[DRV_SHUTDOWN_TEMP] = "shutdown_temp",
+// 	[DRV_NUMBER_OF_TEMP_SENSORS] = "number_of_temp_sensors",
+// 	[DRV_TEMP_SENSOR_0_CURRENT_TEMP] = "temp_sensor_0_current_temp",
+// 	[DRV_TEMP_SENSOR_0_MINIMUM_TEMP] = "temp_sensor_0_minimum_temp",
+// 	[DRV_TEMP_SENSOR_0_MAXIMUM_TEMP] = "temp_sensor_0_maximum_temp",
+// 	[DRV_TEMP_SENSOR_1_CURRENT_TEMP] = "temp_sensor_1_current_temp",
+// 	[DRV_TEMP_SENSOR_1_MINIMUM_TEMP] = "temp_sensor_1_minimum_temp",
+// 	[DRV_TEMP_SENSOR_1_MAXIMUM_TEMP] = "temp_sensor_1_maximum_temp",
+// 	[DRV_TEMP_SENSOR_2_CURRENT_TEMP] = "temp_sensor_2_current_temp",
+// 	[DRV_TEMP_SENSOR_2_MINIMUM_TEMP] = "temp_sensor_2_minimum_temp",
+// 	[DRV_TEMP_SENSOR_2_MAXIMUM_TEMP] = "temp_sensor_2_maximum_temp",
+// 	[DRV_TEMP_SENSOR_3_CURRENT_TEMP] = "temp_sensor_3_current_temp",
+// 	[DRV_TEMP_SENSOR_3_MINIMUM_TEMP] = "temp_sensor_3_minimum_temp",
+// 	[DRV_TEMP_SENSOR_3_MAXIMUM_TEMP] = "temp_sensor_3_maximum_temp",
+// 	[DRV_FRONT_END_LINK_DOWN_COUNTS] = "front_end_link_down_counts",
+// 	[DRV_FRONT_END_LINK_UP_COUNTS] = "front_end_link_up_counts",
+// 	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "front_end_cc_enable_counts",
+// 	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "front_end_cc_disable_counts",
+// 	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "time_waiting_for_cc_enable",
+// };
 
-static const char *stringify_fadu_smart_log_drv_attr_json(__u64 type_id)
-{
-	return stringify_arg(fadu_smart_log_drv_attrs_json, ARRAY_SIZE(fadu_smart_log_drv_attrs_json), type_id);
-}
+// static const char *stringify_fadu_smart_log_drv_attr_json(__u64 type_id)
+// {
+// 	return stringify_arg(fadu_smart_log_drv_attrs_json, ARRAY_SIZE(fadu_smart_log_drv_attrs_json), type_id);
+// }
 
-static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
-{
-	struct json_object *root;
-	struct json_object *throttling_entry_counts;
-	char buf[16];
-	int offset = 0;
-	__u64 type_id, length, value, num_throttling_levels = 0;
-	const char *name;
-	int throttling_entry_length, i;
+// static void show_fadu_smart_log_drv_json(struct fadu_smart_log *log)
+// {
+// 	struct json_object *root;
+// 	struct json_object *throttling_entry_counts;
+// 	char buf[16];
+// 	int offset = 0;
+// 	__u64 type_id, length, value, num_throttling_levels = 0;
+// 	const char *name;
+// 	int throttling_entry_length, i;
 
-	root = json_create_object();
+// 	root = json_create_object();
 
-	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
-		type_id = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
+// 		type_id = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		length = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 		length = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		if (type_id == NS_LOG_PAGE_START)
-			continue;
-		else if (type_id == NS_LOG_PAGE_END)
-			break;
+// 		if (type_id == NS_LOG_PAGE_START)
+// 			continue;
+// 		else if (type_id == NS_LOG_PAGE_END)
+// 			break;
 
-		name = stringify_fadu_smart_log_drv_attr_json(type_id);
-		if (is_fadu_smart_log_string_attr(type_id)) {
-			json_object_add_value_string(root, name, log->raw + offset);
-		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
-			throttling_entry_counts = json_create_object();
-			throttling_entry_length = length / num_throttling_levels;
-			for (i = 0; i < num_throttling_levels; i++) {
-				memset(buf, 0, sizeof(char) * 16);
-				sprintf(buf, "L%d", i);
-				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
-						  throttling_entry_length);
-				json_object_add_value_uint(throttling_entry_counts, buf, value);
-			}
-			json_object_add_value_object(root, "throttling_entry_counts", throttling_entry_counts);
-		} else if (length > 8) {
-			json_object_add_value_float(root, name, be_to_float(log->raw + offset, length));
-		} else {
-			value = be_to_int(log->raw + offset, length);
-			json_object_add_value_uint(root, name, value);
-			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-				num_throttling_levels = value;
-		}
+// 		name = stringify_fadu_smart_log_drv_attr_json(type_id);
+// 		if (is_fadu_smart_log_string_attr(type_id)) {
+// 			json_object_add_value_string(root, name, log->raw + offset);
+// 		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
+// 			throttling_entry_counts = json_create_object();
+// 			throttling_entry_length = length / num_throttling_levels;
+// 			for (i = 0; i < num_throttling_levels; i++) {
+// 				memset(buf, 0, sizeof(char) * 16);
+// 				sprintf(buf, "L%d", i);
+// 				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
+// 						  throttling_entry_length);
+// 				json_object_add_value_uint(throttling_entry_counts, buf, value);
+// 			}
+// 			json_object_add_value_object(root, "throttling_entry_counts", throttling_entry_counts);
+// 		} else if (length > 8) {
+// 			json_object_add_value_float(root, name, be_to_float(log->raw + offset, length));
+// 		} else {
+// 			value = be_to_int(log->raw + offset, length);
+// 			json_object_add_value_uint(root, name, value);
+// 			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+// 				num_throttling_levels = value;
+// 		}
 
-		offset += length;
-	}
+// 		offset += length;
+// 	}
 
-	json_print_object(root, NULL);
-	printf("\n");
-	json_free_object(root);
-}
+// 	json_print_object(root, NULL);
+// 	printf("\n");
+// 	json_free_object(root);
+// }
 
-static const char *const fadu_smart_log_drv_attrs_normal[] = {
-	[DRV_LOG_PAGE_SCHEME_VERSION] = "Log Page Scheme Version",
-	[DRV_LOG_PAGE_VERSION] = "Log Page Version",
-	[DRV_FIRMWARE_VERSION] = "Firmware Version",
-	[DRV_UNEXPECTED_POWER_OFF_COUNT] = "Unexpected Power Off Count",
-	[DRV_TOTAL_GROWN_BAD_BLOCKS] = "Total Grown Bad Blocks",
-	[DRV_TOTAL_GROWN_BAD_BLOCKS_HIGHEST_DIE] = "Total Grown Bad Blocks Highest Die",
-	[DRV_SMART_CRITICAL_EVENT_COUNT] = "SMART Critical Event Count",
-	[DRV_SMART_STATUS] = "SMART Status",
-	[DRV_AVAILABLE_SPARE_BLOCKS] = "Available Spare Blocks",
-	[DRV_AVAILABLE_SPARE_THRESHOLD] = "Available Spare Threshold",
-	[DRV_MAXIMUM_POSSIBLE_SPARE_BLOCKS] = "Maximum Possible Spare Blocks",
-	[DRV_AVAILABLE_SPARE_BLOCKS_NORMALIZED] = "Available Spare Blocks Normalized",
-	[DRV_TOTAL_RAW_READ_ERRORS] = "Total Raw Read Errors",
-	[DRV_TOTAL_READ_ERRORS] = "Total Read Errors",
-	[DRV_TOTAL_READ_ERRORS_CORRECTABLE] = "Total Read Errors Correctable",
-	[DRV_TOTAL_READ_ERRORS_UNCORRECTABLE] = "Total Read Errors Uncorrectable",
-	[DRV_TOTAL_READS_REQUIRING_HEROIC_RECOVERY] = "Total Reads Requiring Heroic Recovery",
-	[DRV_TOTAL_READ_ERRORS_FROM_HOST_REQUESTS] = "Total Read Errors From Host Requests",
-	[DRV_TOTAL_INTERNAL_READ_ERRORS] = "Total Internal Read Errors",
-	[DRV_TOTAL_ERASE_ERRORS] = "Total Erase Errors",
-	[DRV_TOTAL_PROGRAM_ERORS] = "Total Program Errors",
-	[DRV_POWER_ON_HOUR_COUNT] = "Power On Hour Count",
-	[DRV_POWER_CYCLE_COUNT] = "Power Cycle Count",
-	[DRV_TLC_AVERAGE_PE_CYCLES] = "TLC Average PE Cycles",
-	[DRV_TLC_MAXIMUM_PE_CYCLES] = "TLC Maximum PE Cycles",
-	[DRV_TLC_MINIMUM_PE_CYCLES] = "TLC Minimum PE Cycles",
-	[DRV_SLC_AVERAGE_PE_CYCLES] = "SLC Average PE Cycles",
-	[DRV_SLC_MAXIMUM_PE_CYCLES] = "SLC Maximum PE Cycles",
-	[DRV_SLC_MINIMUM_PE_CYCLES] = "SLC Minimum PE Cycles",
-	[DRV_CUSTOMER_SLC_BUFFER_SIZE_GB] = "Customer SLC Buffer Size GB",
-	[DRV_NORMALIZED_MEDIA_WEAR] = "Normalized Media Wear",
-	[DRV_NORMALIZED_HOST_WEAR] = "Normalized Host Wear",
-	[DRV_HOST_GB_WRITTEN] = "Host GB Written",
-	[DRV_HOST_GB_READ] = "Host GB Read",
-	[DRV_MEDIA_GB_WRITTEN] = "Media GB Written",
-	[DRV_MEDIA_GB_READ] = "Media GB Read",
-	[DRV_HOST_FLUSHES_REQUESTED] = "Host Flushes Requested",
-	[DRV_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "Total Blocks Copied Due To Read Disturb",
-	[DRV_TOTAL_TRIM_COMMANDS_REQUESTED] = "Total Trim Commands Requested",
-	[DRV_TOTAL_4K_TRIMS_EXECUTED] = "Total 4K Trims Executed",
-	[DRV_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "Total Trim Commands Under Partition",
-	[DRV_TOTAL_UNITS_OF_DATA_IN_REPLAY] = "Total Units Of Data In Replay",
-	[DRV_TLC_WRITE_AMPLIFICATION] = "TLC Write Amplification",
-	[DRV_SLC_WRITE_AMPLIFICATION] = "SLC Write Amplification",
-	[DRV_TOTAL_THROTTLING_LEVELS] = "Total Throttling Levels",
-	[DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL] = "Throttling Entry Count",
-	[DRV_FIRST_THROTTLE_TEMP_THRESHOLD] = "First Throttle Temp Threshold",
-	[DRV_SHUTDOWN_TEMP] = "Shutdown Temp",
-	[DRV_NUMBER_OF_TEMP_SENSORS] = "Number Of Temp Sensors",
-	[DRV_TEMP_SENSOR_0_CURRENT_TEMP] = "Temp Sensor 0 Current Temp",
-	[DRV_TEMP_SENSOR_0_MINIMUM_TEMP] = "Temp Sensor 0 Minimum Temp",
-	[DRV_TEMP_SENSOR_0_MAXIMUM_TEMP] = "Temp Sensor 0 Maximum Temp",
-	[DRV_TEMP_SENSOR_1_CURRENT_TEMP] = "Temp Sensor 1 Current Temp",
-	[DRV_TEMP_SENSOR_1_MINIMUM_TEMP] = "Temp Sensor 1 Minimum Temp",
-	[DRV_TEMP_SENSOR_1_MAXIMUM_TEMP] = "Temp Sensor 1 Maximum Temp",
-	[DRV_TEMP_SENSOR_2_CURRENT_TEMP] = "Temp Sensor 2 Current Temp",
-	[DRV_TEMP_SENSOR_2_MINIMUM_TEMP] = "Temp Sensor 2 Minimum Temp",
-	[DRV_TEMP_SENSOR_2_MAXIMUM_TEMP] = "Temp Sensor 2 Maximum Temp",
-	[DRV_TEMP_SENSOR_3_CURRENT_TEMP] = "Temp Sensor 3 Current Temp",
-	[DRV_TEMP_SENSOR_3_MINIMUM_TEMP] = "Temp Sensor 3 Minimum Temp",
-	[DRV_TEMP_SENSOR_3_MAXIMUM_TEMP] = "Temp Sensor 3 Maximum Temp",
-	[DRV_FRONT_END_LINK_DOWN_COUNTS] = "Front End Link Down Counts",
-	[DRV_FRONT_END_LINK_UP_COUNTS] = "Front End Link Up Counts",
-	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "Front End CC_Enable Counts",
-	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "Front End CC_Disable Counts",
-	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "Time Waiting For CC_Enable",
-};
+// static const char *const fadu_smart_log_drv_attrs_normal[] = {
+// 	[DRV_LOG_PAGE_SCHEME_VERSION] = "Log Page Scheme Version",
+// 	[DRV_LOG_PAGE_VERSION] = "Log Page Version",
+// 	[DRV_FIRMWARE_VERSION] = "Firmware Version",
+// 	[DRV_UNEXPECTED_POWER_OFF_COUNT] = "Unexpected Power Off Count",
+// 	[DRV_TOTAL_GROWN_BAD_BLOCKS] = "Total Grown Bad Blocks",
+// 	[DRV_TOTAL_GROWN_BAD_BLOCKS_HIGHEST_DIE] = "Total Grown Bad Blocks Highest Die",
+// 	[DRV_SMART_CRITICAL_EVENT_COUNT] = "SMART Critical Event Count",
+// 	[DRV_SMART_STATUS] = "SMART Status",
+// 	[DRV_AVAILABLE_SPARE_BLOCKS] = "Available Spare Blocks",
+// 	[DRV_AVAILABLE_SPARE_THRESHOLD] = "Available Spare Threshold",
+// 	[DRV_MAXIMUM_POSSIBLE_SPARE_BLOCKS] = "Maximum Possible Spare Blocks",
+// 	[DRV_AVAILABLE_SPARE_BLOCKS_NORMALIZED] = "Available Spare Blocks Normalized",
+// 	[DRV_TOTAL_RAW_READ_ERRORS] = "Total Raw Read Errors",
+// 	[DRV_TOTAL_READ_ERRORS] = "Total Read Errors",
+// 	[DRV_TOTAL_READ_ERRORS_CORRECTABLE] = "Total Read Errors Correctable",
+// 	[DRV_TOTAL_READ_ERRORS_UNCORRECTABLE] = "Total Read Errors Uncorrectable",
+// 	[DRV_TOTAL_READS_REQUIRING_HEROIC_RECOVERY] = "Total Reads Requiring Heroic Recovery",
+// 	[DRV_TOTAL_READ_ERRORS_FROM_HOST_REQUESTS] = "Total Read Errors From Host Requests",
+// 	[DRV_TOTAL_INTERNAL_READ_ERRORS] = "Total Internal Read Errors",
+// 	[DRV_TOTAL_ERASE_ERRORS] = "Total Erase Errors",
+// 	[DRV_TOTAL_PROGRAM_ERORS] = "Total Program Errors",
+// 	[DRV_POWER_ON_HOUR_COUNT] = "Power On Hour Count",
+// 	[DRV_POWER_CYCLE_COUNT] = "Power Cycle Count",
+// 	[DRV_TLC_AVERAGE_PE_CYCLES] = "TLC Average PE Cycles",
+// 	[DRV_TLC_MAXIMUM_PE_CYCLES] = "TLC Maximum PE Cycles",
+// 	[DRV_TLC_MINIMUM_PE_CYCLES] = "TLC Minimum PE Cycles",
+// 	[DRV_SLC_AVERAGE_PE_CYCLES] = "SLC Average PE Cycles",
+// 	[DRV_SLC_MAXIMUM_PE_CYCLES] = "SLC Maximum PE Cycles",
+// 	[DRV_SLC_MINIMUM_PE_CYCLES] = "SLC Minimum PE Cycles",
+// 	[DRV_CUSTOMER_SLC_BUFFER_SIZE_GB] = "Customer SLC Buffer Size GB",
+// 	[DRV_NORMALIZED_MEDIA_WEAR] = "Normalized Media Wear",
+// 	[DRV_NORMALIZED_HOST_WEAR] = "Normalized Host Wear",
+// 	[DRV_HOST_GB_WRITTEN] = "Host GB Written",
+// 	[DRV_HOST_GB_READ] = "Host GB Read",
+// 	[DRV_MEDIA_GB_WRITTEN] = "Media GB Written",
+// 	[DRV_MEDIA_GB_READ] = "Media GB Read",
+// 	[DRV_HOST_FLUSHES_REQUESTED] = "Host Flushes Requested",
+// 	[DRV_TOTAL_BLOCKS_COPIED_DUE_TO_READ_DISTURB] = "Total Blocks Copied Due To Read Disturb",
+// 	[DRV_TOTAL_TRIM_COMMANDS_REQUESTED] = "Total Trim Commands Requested",
+// 	[DRV_TOTAL_4K_TRIMS_EXECUTED] = "Total 4K Trims Executed",
+// 	[DRV_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "Total Trim Commands Under Partition",
+// 	[DRV_TOTAL_UNITS_OF_DATA_IN_REPLAY] = "Total Units Of Data In Replay",
+// 	[DRV_TLC_WRITE_AMPLIFICATION] = "TLC Write Amplification",
+// 	[DRV_SLC_WRITE_AMPLIFICATION] = "SLC Write Amplification",
+// 	[DRV_TOTAL_THROTTLING_LEVELS] = "Total Throttling Levels",
+// 	[DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL] = "Throttling Entry Count",
+// 	[DRV_FIRST_THROTTLE_TEMP_THRESHOLD] = "First Throttle Temp Threshold",
+// 	[DRV_SHUTDOWN_TEMP] = "Shutdown Temp",
+// 	[DRV_NUMBER_OF_TEMP_SENSORS] = "Number Of Temp Sensors",
+// 	[DRV_TEMP_SENSOR_0_CURRENT_TEMP] = "Temp Sensor 0 Current Temp",
+// 	[DRV_TEMP_SENSOR_0_MINIMUM_TEMP] = "Temp Sensor 0 Minimum Temp",
+// 	[DRV_TEMP_SENSOR_0_MAXIMUM_TEMP] = "Temp Sensor 0 Maximum Temp",
+// 	[DRV_TEMP_SENSOR_1_CURRENT_TEMP] = "Temp Sensor 1 Current Temp",
+// 	[DRV_TEMP_SENSOR_1_MINIMUM_TEMP] = "Temp Sensor 1 Minimum Temp",
+// 	[DRV_TEMP_SENSOR_1_MAXIMUM_TEMP] = "Temp Sensor 1 Maximum Temp",
+// 	[DRV_TEMP_SENSOR_2_CURRENT_TEMP] = "Temp Sensor 2 Current Temp",
+// 	[DRV_TEMP_SENSOR_2_MINIMUM_TEMP] = "Temp Sensor 2 Minimum Temp",
+// 	[DRV_TEMP_SENSOR_2_MAXIMUM_TEMP] = "Temp Sensor 2 Maximum Temp",
+// 	[DRV_TEMP_SENSOR_3_CURRENT_TEMP] = "Temp Sensor 3 Current Temp",
+// 	[DRV_TEMP_SENSOR_3_MINIMUM_TEMP] = "Temp Sensor 3 Minimum Temp",
+// 	[DRV_TEMP_SENSOR_3_MAXIMUM_TEMP] = "Temp Sensor 3 Maximum Temp",
+// 	[DRV_FRONT_END_LINK_DOWN_COUNTS] = "Front End Link Down Counts",
+// 	[DRV_FRONT_END_LINK_UP_COUNTS] = "Front End Link Up Counts",
+// 	[DRV_FRONT_END_CC_ENABLE_COUNTS] = "Front End CC_Enable Counts",
+// 	[DRV_FRONT_END_CC_DISABLE_COUNTS] = "Front End CC_Disable Counts",
+// 	[DRV_TIME_WAITING_FOR_CC_ENABLE] = "Time Waiting For CC_Enable",
+// };
 
-static const char *stringify_fadu_smart_log_drv_attr_normal(__u64 type_id)
-{
-	return stringify_arg(fadu_smart_log_drv_attrs_normal, ARRAY_SIZE(fadu_smart_log_drv_attrs_normal), type_id);
-}
+// static const char *stringify_fadu_smart_log_drv_attr_normal(__u64 type_id)
+// {
+// 	return stringify_arg(fadu_smart_log_drv_attrs_normal, ARRAY_SIZE(fadu_smart_log_drv_attrs_normal), type_id);
+// }
 
-static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
-{
-	int offset = 0;
-	__u64 type_id, length, value, num_throttling_levels = 0;
-	const char *name;
-	int throttling_entry_length, i;
+// static void show_fadu_smart_log_drv_normal(struct fadu_smart_log *log)
+// {
+// 	int offset = 0;
+// 	__u64 type_id, length, value, num_throttling_levels = 0;
+// 	const char *name;
+// 	int throttling_entry_length, i;
 
-	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
-		type_id = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
+// 		type_id = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		length = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 		length = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		if (type_id == NS_LOG_PAGE_START)
-			continue;
-		else if (type_id == NS_LOG_PAGE_END)
-			break;
+// 		if (type_id == NS_LOG_PAGE_START)
+// 			continue;
+// 		else if (type_id == NS_LOG_PAGE_END)
+// 			break;
 
-		name = stringify_fadu_smart_log_drv_attr_normal(type_id);
-		if (is_fadu_smart_log_string_attr(type_id)) {
-			printf("%-40s: %s\n", name, log->raw + offset);
-		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
-			throttling_entry_length = length / num_throttling_levels;
-			for (i = 0; i < num_throttling_levels; i++) {
-				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
-						  throttling_entry_length);
-				printf("%s (L%d)             : %lld\n", name, i, value);
-			}
-		} else if (length > 8) {
-			printf("%-40s: %'.0Lf\n", name, be_to_float(log->raw + offset, length));
-		} else {
-			value = be_to_int(log->raw + offset, length);
-			printf("%-40s: %lld\n", name, value);
-			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
-				num_throttling_levels = value;
-		}
+// 		name = stringify_fadu_smart_log_drv_attr_normal(type_id);
+// 		if (is_fadu_smart_log_string_attr(type_id)) {
+// 			printf("%-40s: %s\n", name, log->raw + offset);
+// 		} else if (type_id == DRV_THROTTLING_ENTRY_COUNT_PER_LEVEL) {
+// 			throttling_entry_length = length / num_throttling_levels;
+// 			for (i = 0; i < num_throttling_levels; i++) {
+// 				value = be_to_int(log->raw + offset + (i * throttling_entry_length),
+// 						  throttling_entry_length);
+// 				printf("%s (L%d)             : %lld\n", name, i, value);
+// 			}
+// 		} else if (length > 8) {
+// 			printf("%-40s: %'.0Lf\n", name, be_to_float(log->raw + offset, length));
+// 		} else {
+// 			value = be_to_int(log->raw + offset, length);
+// 			printf("%-40s: %lld\n", name, value);
+// 			if (type_id == DRV_TOTAL_THROTTLING_LEVELS)
+// 				num_throttling_levels = value;
+// 		}
 
-		offset += length;
-	}
+// 		offset += length;
+// 	}
 
-	printf("\n\n");
-}
+// 	printf("\n\n");
+// }
 
-static const char *const fadu_smart_log_ns_attrs_json[] = {
-	[NS_HOST_GB_WRITTEN] = "host_gb_written",
-	[NS_HOST_GB_READ] = "host_gb_read",
-	[NS_HOST_FLUSHES_REQUESTED] = "host_flushes_requested",
-	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "total_trim_commands_requested",
-	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "total_trim_commands_under_partition",
-};
+// static const char *const fadu_smart_log_ns_attrs_json[] = {
+// 	[NS_HOST_GB_WRITTEN] = "host_gb_written",
+// 	[NS_HOST_GB_READ] = "host_gb_read",
+// 	[NS_HOST_FLUSHES_REQUESTED] = "host_flushes_requested",
+// 	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "total_trim_commands_requested",
+// 	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "total_trim_commands_under_partition",
+// };
 
-static const char *stringify_fadu_smart_log_ns_attr_json(__u64 type_id)
-{
-	return stringify_arg(fadu_smart_log_ns_attrs_json, ARRAY_SIZE(fadu_smart_log_ns_attrs_json), type_id);
-}
+// static const char *stringify_fadu_smart_log_ns_attr_json(__u64 type_id)
+// {
+// 	return stringify_arg(fadu_smart_log_ns_attrs_json, ARRAY_SIZE(fadu_smart_log_ns_attrs_json), type_id);
+// }
 
-static void show_fadu_smart_log_ns_json(struct fadu_smart_log *log)
-{
-	struct json_object *root;
-	int offset = 0;
-	__u64 type_id, length;
-	const char *name;
+// static void show_fadu_smart_log_ns_json(struct fadu_smart_log *log)
+// {
+// 	struct json_object *root;
+// 	int offset = 0;
+// 	__u64 type_id, length;
+// 	const char *name;
 
-	root = json_create_object();
+// 	root = json_create_object();
 
-	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
-		type_id = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
+// 		type_id = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		length = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 		length = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		if (type_id == NS_LOG_PAGE_START)
-			continue;
-		else if (type_id == NS_LOG_PAGE_END)
-			break;
+// 		if (type_id == NS_LOG_PAGE_START)
+// 			continue;
+// 		else if (type_id == NS_LOG_PAGE_END)
+// 			break;
 
-		name = stringify_fadu_smart_log_ns_attr_json(type_id);
-		if (length > 8)
-			json_object_add_value_float(root, name, be_to_float(log->raw + offset, length));
-		else
-			json_object_add_value_uint(root, name, be_to_int(log->raw + offset, length));
+// 		name = stringify_fadu_smart_log_ns_attr_json(type_id);
+// 		if (length > 8)
+// 			json_object_add_value_float(root, name, be_to_float(log->raw + offset, length));
+// 		else
+// 			json_object_add_value_uint(root, name, be_to_int(log->raw + offset, length));
 
-		offset += length;
-	}
+// 		offset += length;
+// 	}
 
-	json_print_object(root, NULL);
-	printf("\n");
-	json_free_object(root);
-}
+// 	json_print_object(root, NULL);
+// 	printf("\n");
+// 	json_free_object(root);
+// }
 
-static const char *const fadu_smart_log_ns_attrs_normal[] = {
-	[NS_HOST_GB_WRITTEN] = "Host GB Written",
-	[NS_HOST_GB_READ] = "Host GB Read",
-	[NS_HOST_FLUSHES_REQUESTED] = "Host Flushes Requested",
-	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "Total Trim Commands Requested",
-	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "Total Trim Commands Under Partition",
-};
+// static const char *const fadu_smart_log_ns_attrs_normal[] = {
+// 	[NS_HOST_GB_WRITTEN] = "Host GB Written",
+// 	[NS_HOST_GB_READ] = "Host GB Read",
+// 	[NS_HOST_FLUSHES_REQUESTED] = "Host Flushes Requested",
+// 	[NS_TOTAL_TRIM_COMMANDS_REQUESTED] = "Total Trim Commands Requested",
+// 	[NS_TOTAL_TRIM_COMMANDS_UNDER_PARTITION] = "Total Trim Commands Under Partition",
+// };
 
-static const char *stringify_fadu_smart_log_ns_attr_normal(__u64 type_id)
-{
-	return stringify_arg(fadu_smart_log_ns_attrs_normal, ARRAY_SIZE(fadu_smart_log_ns_attrs_normal), type_id);
-}
+// static const char *stringify_fadu_smart_log_ns_attr_normal(__u64 type_id)
+// {
+// 	return stringify_arg(fadu_smart_log_ns_attrs_normal, ARRAY_SIZE(fadu_smart_log_ns_attrs_normal), type_id);
+// }
 
-static void show_fadu_smart_log_ns_normal(struct fadu_smart_log *log)
-{
-	int offset = 0;
-	__u64 type_id, length;
+// static void show_fadu_smart_log_ns_normal(struct fadu_smart_log *log)
+// {
+// 	int offset = 0;
+// 	__u64 type_id, length;
 
-	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
-		type_id = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 	while (offset < MAX_FADU_SMART_LOG_LENGTH) {
+// 		type_id = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		length = be_to_int(log->raw + offset, 2);
-		offset += 2;
+// 		length = be_to_int(log->raw + offset, 2);
+// 		offset += 2;
 
-		if (type_id == NS_LOG_PAGE_START)
-			continue;
-		else if (type_id == NS_LOG_PAGE_END)
-			break;
+// 		if (type_id == NS_LOG_PAGE_START)
+// 			continue;
+// 		else if (type_id == NS_LOG_PAGE_END)
+// 			break;
 
-		printf("%-35s : ", stringify_fadu_smart_log_ns_attr_normal(type_id));
-		if (length > 8)
-			printf("%'.0Lf\n", be_to_float(log->raw + offset, length));
-		else
-			printf("%lld\n", be_to_int(log->raw + offset, length));
+// 		printf("%-35s : ", stringify_fadu_smart_log_ns_attr_normal(type_id));
+// 		if (length > 8)
+// 			printf("%'.0Lf\n", be_to_float(log->raw + offset, length));
+// 		else
+// 			printf("%lld\n", be_to_int(log->raw + offset, length));
 
-		offset += length;
-	}
+// 		offset += length;
+// 	}
 
-	printf("\n\n");
-}
+// 	printf("\n\n");
+// }
 
-static void show_fadu_smart_log(struct fadu_smart_log *log, unsigned int nsid, enum nvme_print_flags flags)
-{
-	if (flags & BINARY) {
-		return d_raw((unsigned char *)log, sizeof(*log));
-	} else if (flags & JSON) {
-		if (nsid == NVME_NSID_ALL)
-			return show_fadu_smart_log_drv_json(log);
-		else
-			return show_fadu_smart_log_ns_json(log);
-	}
+// static void show_fadu_smart_log(struct fadu_smart_log *log, unsigned int nsid, enum nvme_print_flags flags)
+// {
+// 	if (flags & BINARY) {
+// 		return d_raw((unsigned char *)log, sizeof(*log));
+// 	} else if (flags & JSON) {
+// 		if (nsid == NVME_NSID_ALL)
+// 			return show_fadu_smart_log_drv_json(log);
+// 		else
+// 			return show_fadu_smart_log_ns_json(log);
+// 	}
 
-	if (nsid == NVME_NSID_ALL)
-		show_fadu_smart_log_drv_normal(log);
-	else
-		show_fadu_smart_log_ns_normal(log);
-}
+// 	if (nsid == NVME_NSID_ALL)
+// 		show_fadu_smart_log_drv_normal(log);
+// 	else
+// 		show_fadu_smart_log_ns_normal(log);
+// }
 
-static int get_fadu_smart_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
-{
-	struct fadu_smart_log log;
-	const char *desc = "Retrieve FADU-specific SMART log.";
-	const char *namespace = "(Optional) desired namespace";
-	int flags, err, fd;
+// static int get_fadu_smart_log(int argc, char **argv, struct command *cmd, struct plugin *plugin)
+// {
+// 	struct fadu_smart_log log;
+// 	const char *desc = "Retrieve FADU-specific SMART log.";
+// 	const char *namespace = "(Optional) desired namespace";
+// 	int flags, err, fd;
 
-	struct config {
-		__u32 namespace_id;
-		char *output_format;
-		int raw_binary;
-	};
+// 	struct config {
+// 		__u32 namespace_id;
+// 		char *output_format;
+// 		int raw_binary;
+// 	};
 
-	struct config cfg = {
-		.namespace_id = NVME_NSID_ALL,
-		.output_format = "normal",
-	};
+// 	struct config cfg = {
+// 		.namespace_id = NVME_NSID_ALL,
+// 		.output_format = "normal",
+// 	};
 
-	OPT_ARGS(opts) = {
-		OPT_UINT("namespace-id", 'n', &cfg.namespace_id, namespace),
-		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
-		OPT_FLAG("raw-binary", 'b', &cfg.raw_binary, raw),
-		OPT_END(),
-	};
+// 	OPT_ARGS(opts) = {
+// 		OPT_UINT("namespace-id", 'n', &cfg.namespace_id, namespace),
+// 		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+// 		OPT_FLAG("raw-binary", 'b', &cfg.raw_binary, raw),
+// 		OPT_END(),
+// 	};
 
-	err = fd = parse_and_open(argc, argv, desc, opts);
-	if (fd < 0)
-		goto ret;
+// 	err = fd = parse_and_open(argc, argv, desc, opts);
+// 	if (fd < 0)
+// 		goto ret;
 
-	err = flags = validate_output_format(cfg.output_format);
-	if (flags < 0) {
-		fprintf(stderr, "Invalid output format: %s\n", cfg.output_format);
-		goto close_fd;
-	}
-	if (cfg.raw_binary)
-		flags = BINARY;
+// 	err = flags = validate_output_format(cfg.output_format);
+// 	if (flags < 0) {
+// 		fprintf(stderr, "Invalid output format: %s\n", cfg.output_format);
+// 		goto close_fd;
+// 	}
+// 	if (cfg.raw_binary)
+// 		flags = BINARY;
 
-	err = nvme_get_log(fd, cfg.namespace_id, FADU_LOG_VENDOR_SMART, false, sizeof(log), &log);
-	if (!err)
-		show_fadu_smart_log(&log, cfg.namespace_id, flags);
-	else if (err > 0)
-		nvme_show_status(err);
-	else
-		perror("vs-smart-add-log");
+// 	err = nvme_get_log(fd, cfg.namespace_id, FADU_LOG_VENDOR_SMART, false, sizeof(log), &log);
+// 	if (!err)
+// 		show_fadu_smart_log(&log, cfg.namespace_id, flags);
+// 	else if (err > 0)
+// 		nvme_show_status(err);
+// 	else
+// 		perror("vs-smart-add-log");
 
-close_fd:
-	close(fd);
-ret:
-	return nvme_status_to_errno(err, false);
-}
+// close_fd:
+// 	close(fd);
+// ret:
+// 	return nvme_status_to_errno(err, false);
+// }
 
 static void stringify_log_page_guid(__u8 *guid, char *buf)
 {
