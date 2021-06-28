@@ -139,7 +139,7 @@ struct ocp_thermal_status {
 };
 
 /*
-	Functions used get_smart_add_log
+	Functions used get_smart_add_log 
 */
 struct ocp_cloud_smart_log {
 	__u8 physical_media_units_written[16];
