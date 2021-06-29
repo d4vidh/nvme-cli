@@ -1,0 +1,160 @@
+N\+V\+M-\/\+Express user space tooling for Linux.
+
+To install, run\+: \begin{DoxyVerb}$ make
+# make install
+\end{DoxyVerb}
+
+
+If not sure how to use, find the top-\/level documentation with\+: \begin{DoxyVerb}$ man nvme
+\end{DoxyVerb}
+
+
+Or find a short summary with\+: \begin{DoxyVerb}$ nvme help
+\end{DoxyVerb}
+\hypertarget{md_README_autotoc_md4}{}\doxysection{Distro Support}\label{md_README_autotoc_md4}
+\hypertarget{md_README_autotoc_md5}{}\doxysubsection{Alpine Linux}\label{md_README_autotoc_md5}
+nvme-\/cli is tested on Alpine Linux 3.\+3. Install it using\+: \begin{DoxyVerb}# apk update && apk add nvme-cli nvme-cli-doc
+\end{DoxyVerb}
+
+
+if you just use the device you\textquotesingle{}re after, it will work flawless. 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\# nvme smart-\/log /dev/nvme0}
+\DoxyCodeLine{Smart Log for NVME device:/dev/nvme0 namespace-\/id:ffffffff}
+\DoxyCodeLine{critical\_warning                    : 0}
+\DoxyCodeLine{temperature                         : 49 C}
+\DoxyCodeLine{available\_spare                     : 100\%}
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md6}{}\doxysubsection{Arch Linux}\label{md_README_autotoc_md6}
+nvme-\/cli is available in the {\ttfamily \mbox{[}community\mbox{]}} repository. It can be installed with\+: \begin{DoxyVerb}# pacman -S nvme-cli
+\end{DoxyVerb}
+
+
+The development version can be installed from A\+UR, e.\+g.\+: \begin{DoxyVerb}$ yay -S nvme-cli-git
+\end{DoxyVerb}
+\hypertarget{md_README_autotoc_md7}{}\doxysubsection{Debian}\label{md_README_autotoc_md7}
+nvme-\/cli is available in Debian 9 and up. Install it with your favorite package manager. For example\+: \begin{DoxyVerb}$ sudo apt install nvme-cli
+\end{DoxyVerb}
+\hypertarget{md_README_autotoc_md8}{}\doxysubsection{Fedora}\label{md_README_autotoc_md8}
+nvme-\/cli is available in Fedora 23 and up. Install it with your favorite package manager. For example\+: \begin{DoxyVerb}$ sudo dnf install nvme-cli
+\end{DoxyVerb}
+\hypertarget{md_README_autotoc_md9}{}\doxysubsection{Free\+B\+SD}\label{md_README_autotoc_md9}
+{\ttfamily nvme-\/cli} is available in the Free\+B\+SD Ports Collection. A prebuilt binary package can be installed with\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\# pkg install nvme-\/cli}
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md10}{}\doxysubsection{Gentoo}\label{md_README_autotoc_md10}
+nvme-\/cli is available and tested in portage\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ emerge -\/av nvme-\/cli}
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md11}{}\doxysubsection{Nix(\+O\+S)}\label{md_README_autotoc_md11}
+The attribute is named {\ttfamily nvme-\/cli} and can e.\+g. be installed with\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\$ nix-\/env -\/f '<nixpkgs>' -\/iA nvme-\/cli}
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md12}{}\doxysubsection{open\+S\+U\+SE}\label{md_README_autotoc_md12}
+nvme-\/cli is available in open\+S\+U\+SE Leap 42.\+2 or later and Tumbleweed. You can install it using zypper. For example\+: \begin{DoxyVerb}$ sudo zypper install nvme-cli
+\end{DoxyVerb}
+\hypertarget{md_README_autotoc_md13}{}\doxysubsection{Ubuntu}\label{md_README_autotoc_md13}
+nvme-\/cli is supported in the Universe package sources for Xenial for many architectures. For a complete list try running\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{rmadison nvme-\/cli}
+\DoxyCodeLine{ nvme-\/cli | 0.3-\/1 | xenial/universe | source, amd64, arm64, armhf, i386, powerpc, ppc64el, s390x}
+\end{DoxyCode}
+
+
+A Debian based package for nvme-\/cli is currently maintained as a Ubuntu P\+PA. Right now there is support for Trusty, Vivid and Wiley. To install nvme-\/cli using this approach please perform the following steps\+:
+\begin{DoxyEnumerate}
+\item Add the sbates P\+PA to your sources. One way to do this is to run 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{sudo add-\/apt-\/repository ppa:sbates}
+\end{DoxyCode}
+
+\item Perform an update of your repository list\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{sudo apt-\/get update}
+\end{DoxyCode}
+
+\item Get nvme-\/cli! 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{sudo apt-\/get install nvme-\/cli}
+\end{DoxyCode}
+
+\item Test the code. 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{sudo nvme list}
+\end{DoxyCode}
+
+\end{DoxyEnumerate}
+
+In the case of no N\+V\+Me devices you will see 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{No NVMe devices detected.}
+\end{DoxyCode}
+
+
+otherwise you will see information about each N\+V\+Me device installed in the system.\hypertarget{md_README_autotoc_md14}{}\doxysubsection{Open\+Embedded/\+Yocto}\label{md_README_autotoc_md14}
+An \href{https://layers.openembedded.org/layerindex/recipe/88631/}{\texttt{ nvme-\/cli recipe}} is available as part of the {\ttfamily meta-\/openembeded} layer collection.\hypertarget{md_README_autotoc_md15}{}\doxysubsection{Buildroot}\label{md_README_autotoc_md15}
+{\ttfamily nvme-\/cli} is available as \href{https://buildroot.org}{\texttt{ buildroot}} package. The package is named {\ttfamily nvme}.\hypertarget{md_README_autotoc_md16}{}\doxysubsection{Other Distros}\label{md_README_autotoc_md16}
+T\+BD\hypertarget{md_README_autotoc_md17}{}\doxysection{Developers}\label{md_README_autotoc_md17}
+You may wish to add a new command or possibly an entirely new plug-\/in for some special extension outside the spec.
+
+This project provides macros that help generate the code for you. If you\textquotesingle{}re interested in how that works, it is very similar to how trace events are created by Linux kernel\textquotesingle{}s \textquotesingle{}ftrace\textquotesingle{} component.\hypertarget{md_README_autotoc_md18}{}\doxysubsection{Add command to existing built-\/in}\label{md_README_autotoc_md18}
+The first thing to do is define a new command entry in the command list. This is declared in \mbox{\hyperlink{nvme-builtin_8h_source}{nvme-\/builtin.\+h}}. Simply append a new \char`\"{}\+E\+N\+T\+R\+Y\char`\"{} into the list. The E\+N\+T\+RY normally takes three arguments\+: the \char`\"{}name\char`\"{} of the subcommand (this is what the user will type at the command line to invoke your command), a short help description of what your command does, and the name of the function callback that you\textquotesingle{}re going to write. Additionally, You can declare an alias name of subcommand with fourth argument, if needed.
+
+After the E\+N\+T\+RY is defined, you need to implement the callback. It takes four arguments\+: argc, argv, the command structure associated with the callback, and the plug-\/in structure that contains that command. The prototype looks like this\+:
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordtype}{int} f(\textcolor{keywordtype}{int} argc, \textcolor{keywordtype}{char} **argv, \textcolor{keyword}{struct} \mbox{\hyperlink{structcommand}{command}} *cmd, \textcolor{keyword}{struct} \mbox{\hyperlink{structplugin}{plugin}} *\mbox{\hyperlink{structplugin}{plugin}});}
+\end{DoxyCode}
+
+
+The argc and argv are adjusted from the command line arguments to start after the sub-\/command. So if the command line is \char`\"{}nvme foo -\/-\/option=bar\char`\"{}, the argc is 1 and argv starts at \char`\"{}-\/-\/option\char`\"{}.
+
+You can then define argument parsing for your sub-\/command\textquotesingle{}s specific options then do some command specific action in your callback.\hypertarget{md_README_autotoc_md19}{}\doxysubsection{Add a new plugin}\label{md_README_autotoc_md19}
+The nvme-\/cli provides macros to make define a new plug-\/in simpler. You can certainly do all this by hand if you want, but it should be easier to get going using the macros. To start, first create a header file to define your plugin. This is where you will give your plugin a name, description, and define all the sub-\/commands your plugin implements.
+
+There is a very important order on how to define the plugin. The following is a basic example on how to start this\+:
+
+File\+: foo-\/plugin.\+h 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\#undef CMD\_INC\_FILE}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#define CMD\_INC\_FILE plugins/foo/foo-\/plugin}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\#if !defined(FOO) || defined(CMD\_HEADER\_MULTI\_READ)}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#define FOO}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include "cmd.h"}}
+\DoxyCodeLine{}
+\DoxyCodeLine{PLUGIN(NAME(\textcolor{stringliteral}{"foo"}, \textcolor{stringliteral}{"Foo plugin"}),}
+\DoxyCodeLine{    COMMAND\_LIST(}
+\DoxyCodeLine{        ENTRY(\textcolor{stringliteral}{"bar"}, \textcolor{stringliteral}{"foo bar"}, bar)}
+\DoxyCodeLine{        ENTRY(\textcolor{stringliteral}{"baz"}, \textcolor{stringliteral}{"foo baz"}, baz)}
+\DoxyCodeLine{        ENTRY(\textcolor{stringliteral}{"qux"}, \textcolor{stringliteral}{"foo quz"}, qux)}
+\DoxyCodeLine{    )}
+\DoxyCodeLine{);}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\#endif}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include "define\_cmd.h"}}
+\end{DoxyCode}
+
+
+In order to have the compiler generate the plugin through the xmacro expansion, you need to include this header in your source file, with pre-\/defining macro directive to create the commands.
+
+To get started from the above example, we just need to define \char`\"{}\+C\+R\+E\+A\+T\+E\+\_\+\+C\+M\+D\char`\"{} and include the header\+:
+
+File\+: foo-\/plugin.\+c 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include "nvme.h"}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{preprocessor}{\#define CREATE\_CMD}}
+\DoxyCodeLine{\textcolor{preprocessor}{\#include "foo-\/plugin.h"}}
+\end{DoxyCode}
+
+
+After that, you just need to implement the functions you defined in each E\+N\+T\+RY, then append the object file name to the Makefile\textquotesingle{}s \char`\"{}\+O\+B\+J\+S\char`\"{}. 

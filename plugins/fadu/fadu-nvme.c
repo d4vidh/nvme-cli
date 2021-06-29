@@ -1,3 +1,7 @@
+/**
+ * @file fadu-nvme.c
+ * @brief fadu plugin 
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -829,7 +833,7 @@ ret:
  * Clear PCIe Correctable Error Counters
  * @getlog_id: 0xC3
  * @option: 
- * @usage: nvme fadu vs-fw-activate-history /dev/nvme0n1
+ * @usage: nvme fadu clear-pcie-correctable-errors /dev/nvme0n1
  */
 static int clear_pcie_correctable_errors(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
