@@ -864,7 +864,7 @@ ret:
  * Clear FW Update History
  * @getlog_id: 0xC1
  * @option: 
- * @usage: nvme fadu vs-fw-activate-history /dev/nvme0n1
+ * @usage: nvme fadu clear-fw-activate-history /dev/nvme0n1
  */
 static int clear_fw_activate_history(int argc, char **argv, struct command *cmd, struct plugin *plugin)
 {
