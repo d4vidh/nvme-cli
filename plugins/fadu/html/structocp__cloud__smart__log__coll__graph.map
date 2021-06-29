@@ -1,7 +1,0 @@
-<map id="ocp_cloud_smart_log" name="ocp_cloud_smart_log">
-<area shape="rect" id="node1" title=" " alt="" coords="380,97,539,124"/>
-<area shape="rect" id="node2" href="$structocp__thermal__status.html" title=" " alt="" coords="9,5,160,32"/>
-<area shape="rect" id="node3" href="$structocp__user__data__erase__count.html" title=" " alt="" coords="5,57,164,98"/>
-<area shape="rect" id="node4" href="$structocp__bad__nand__block__count.html" title=" " alt="" coords="6,122,163,163"/>
-<area shape="rect" id="node5" href="$structocp__e2e__correction__count.html" title=" " alt="" coords="11,187,159,229"/>
-</map>

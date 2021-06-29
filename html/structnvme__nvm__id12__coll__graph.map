@@ -1,7 +1,0 @@
-<map id="nvme_nvm_id12" name="nvme_nvm_id12">
-<area shape="rect" id="node1" title=" " alt="" coords="179,273,310,300"/>
-<area shape="rect" id="node2" href="$structnvme__nvm__id12__group.html" title=" " alt="" coords="5,184,180,211"/>
-<area shape="rect" id="node3" href="$structnvme__nvm__lp__tbl.html" title=" " alt="" coords="23,95,162,121"/>
-<area shape="rect" id="node4" href="$structnvme__nvm__lp__mlc.html" title=" " alt="" coords="20,5,165,32"/>
-<area shape="rect" id="node5" href="$structnvme__nvm__addr__format.html" title=" " alt="" coords="204,184,387,211"/>
-</map>

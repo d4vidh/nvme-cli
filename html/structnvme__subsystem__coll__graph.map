@@ -1,5 +1,0 @@
-<map id="nvme_subsystem" name="nvme_subsystem">
-<area shape="rect" id="node1" title=" " alt="" coords="61,5,198,32"/>
-<area shape="rect" id="node2" href="$structnvme__ctrl.html" title=" " alt="" coords="19,95,106,121"/>
-<area shape="rect" id="node3" href="$structnvme__namespace.html" title=" " alt="" coords="5,184,147,211"/>
-</map>
