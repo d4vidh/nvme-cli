@@ -20,6 +20,7 @@ PLUGIN(NAME("fadu", "Fadu vendor specific extensions"),
 		ENTRY("clear-pcie-correctable-errors", "Clear PCIe Correctable Error Counters", clear_pcie_correctable_errors)
 		ENTRY("clear-fw-activate-history", "Clear FW Update History", clear_fw_activate_history)
 		ENTRY("cloud-ssd-plugin-version", "Show Cloud SSD Plugin Version", cloud_ssd_plugin_version)
+		ENTRY("vs-drive-info", "Retrieve Drive Info", get_drive_info)
 	)
 );
 

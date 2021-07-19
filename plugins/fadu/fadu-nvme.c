@@ -26,6 +26,10 @@
 #include "fadu-nvme.h"
 
 enum {
+	FADU_NVME_ADMIN_VUC_OPCODE = 0xC4,
+};
+
+enum {
 	FADU_LOG_CLOUD_SMART = 0xC0,
 	FADU_LOG_ERROR_RECOVERY = 0xC1,
 	FADU_LOG_FW_ACTIVATE_HISTORY = 0xC2,	
@@ -202,6 +206,11 @@ struct __attribute__((packed)) ocp_fw_act_history {
 	__u8 log_page_guid[16];
 };
 
+/*drive_info struct*/
+struct ocp_drive_info {
+	__u32 hw_revision;
+	__u32 ftl_unit_size;
+};
 
 static const int plugin_version_major = 1;
 static const int plugin_version_minor = 0;
@@ -226,6 +235,17 @@ static const char *stringify_arg(const char *const *strings, size_t array_size, 
 	if (idx < array_size && strings[idx])
 		return strings[idx];
 	return "unrecognized";
+}
+
+static unsigned int get_num_dwords(unsigned int byte_len)
+{
+	unsigned int num_dwords;
+
+	num_dwords = byte_len / 4;
+	if (byte_len % 4 != 0)
+		num_dwords += 1;
+
+	return num_dwords;
 }
 
 static void stringify_log_page_guid(__u8 *guid, char *buf)
@@ -901,4 +921,102 @@ static int cloud_ssd_plugin_version(int argc, char **argv, struct command *cmd, 
 {
 	printf("cloud ssd plugin version: %d.%d\n", plugin_version_major, plugin_version_minor);
 	return 0;
+}
+
+/**
+ * drive-info
+ * **/
+
+static void show_drive_info_json(struct ocp_drive_info *info)
+{
+	struct json_object *root;
+	char buf[20];
+	__u16 hw_rev_major, hw_rev_minor;
+
+	root = json_create_object();
+
+	memset((void *)buf, 0, 20);
+	hw_rev_major = le32_to_cpu(info->hw_revision) / 10;
+	hw_rev_minor = le32_to_cpu(info->hw_revision) % 10;
+	sprintf(buf, "%" PRIu32 ".%" PRIu32, hw_rev_major, hw_rev_minor);
+
+	json_object_add_value_string(root, "hw_revision", buf);
+	json_object_add_value_uint(root, "ftl_unit_size", le32_to_cpu(info->ftl_unit_size));
+
+	json_print_object(root, NULL);
+	printf("\n");
+	json_free_object(root);
+}
+
+static void show_drive_info_normal(struct ocp_drive_info *info)
+{
+	__u16 hw_rev_major, hw_rev_minor;
+
+	hw_rev_major = le32_to_cpu(info->hw_revision) / 10;
+	hw_rev_minor = le32_to_cpu(info->hw_revision) % 10;
+
+	printf("HW Revision   : %" PRIu32 ".%" PRIu32 "\n", hw_rev_major, hw_rev_minor);
+	printf("FTL Unit Size : %" PRIu32 "\n", le32_to_cpu(info->ftl_unit_size));
+	printf("\n\n");
+}
+
+static void show_drive_info(struct ocp_drive_info *info, enum nvme_print_flags flags)
+{
+	if (flags & BINARY)
+		return d_raw((unsigned char *)info, sizeof(*info));
+	else if (flags & JSON)
+		return show_drive_info_json(info);
+
+	show_drive_info_normal(info);
+}
+
+static int get_drive_info(int argc, char **argv, struct command *cmd, struct plugin *plugin)
+{
+	struct ocp_drive_info info;
+	const char *desc = "Retrieve drive information.";
+	int flags, err, fd;
+	__u32 data_len;
+
+	struct config {
+		char *output_format;
+		int raw_binary;
+	};
+
+	struct config cfg = {
+		.output_format = "normal",
+	};
+
+	OPT_ARGS(opts) = {
+		OPT_FMT("output-format", 'o', &cfg.output_format, output_format),
+		OPT_FLAG("raw-binary", 'b', &cfg.raw_binary, raw),
+		OPT_END(),
+	};
+
+	err = fd = parse_and_open(argc, argv, desc, opts);
+	if (fd < 0)
+		goto ret;
+
+	err = flags = validate_output_format(cfg.output_format);
+	if (flags < 0) {
+		fprintf(stderr, "Invalid output format: %s\n", cfg.output_format);
+		goto close_fd;
+	}
+	if (cfg.raw_binary)
+		flags = BINARY;
+
+	data_len = sizeof(info);
+	err = nvme_passthru(fd, NVME_IOCTL_ADMIN_CMD, FADU_NVME_ADMIN_VUC_OPCODE, 0, 0, 0,
+			    FADU_VUC_SUBOPCODE_VS_DRIVE_INFO, 0, get_num_dwords(data_len), 0, 0, 0, 0, 0, data_len,
+			    &info, 0, NULL, 0, NULL);
+	if (!err)
+		show_drive_info(&info, flags);
+	else if (err > 0)
+		nvme_show_status(err);
+	else
+		perror("vs-drive-info");
+
+close_fd:
+	close(fd);
+ret:
+	return nvme_status_to_errno(err, false);
 }
